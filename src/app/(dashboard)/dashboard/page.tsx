@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { ExpenseChart } from '@/components/dashboard/ExpenseChart';
@@ -8,30 +9,222 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Receipt, Users, Wallet, TrendingUp, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { format } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, parseISO } from 'date-fns';
+import { expensesApi } from '@/lib/api/expenses';
+import { groupsApi } from '@/lib/api/groups';
+import { budgetsApi } from '@/lib/api/budgets';
+import { settlementsApi } from '@/lib/api/settlements';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { toast } from 'sonner';
+import { ExpenseResponse, GroupResponse, BudgetResponse, SettlementResponse } from '@/types';
+import { es } from 'date-fns/locale';
 
-// Mock data - En producción esto vendría de la API
-const mockExpenseData = [
-  { date: 'Lun', amount: 120, previousAmount: 100 },
-  { date: 'Mar', amount: 150, previousAmount: 130 },
-  { date: 'Mié', amount: 80, previousAmount: 90 },
-  { date: 'Jue', amount: 200, previousAmount: 180 },
-  { date: 'Vie', amount: 90, previousAmount: 110 },
-  { date: 'Sáb', amount: 160, previousAmount: 140 },
-  { date: 'Dom', amount: 110, previousAmount: 120 },
-];
+interface ChartDataPoint {
+  date: string;
+  amount: number;
+  previousAmount: number;
+}
 
-const mockCategoryData = [
-  { name: 'Comida', value: 450, color: 'var(--chart-1)' },
-  { name: 'Transporte', value: 280, color: 'var(--chart-2)' },
-  { name: 'Entretenimiento', value: 150, color: 'var(--chart-3)' },
-  { name: 'Otros', value: 120, color: 'var(--chart-4)' },
-];
+interface CategoryDataPoint {
+  name: string;
+  value: number;
+  color: string;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const currentDate = format(new Date(), "EEEE, d 'de' MMMM");
+  const currentDate = format(new Date(), "EEEE, d 'de' MMMM", { locale: es });
+
+  const [loading, setLoading] = useState(true);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [previousMonthExpenses, setPreviousMonthExpenses] = useState(0);
+  const [activeGroups, setActiveGroups] = useState(0);
+  const [budgetAvailable, setBudgetAvailable] = useState(0);
+  const [balance, setBalance] = useState(0);
+  const [expenseChartData, setExpenseChartData] = useState<ChartDataPoint[]>([]);
+  const [categoryChartData, setCategoryChartData] = useState<CategoryDataPoint[]>([]);
+  const [recentExpenses, setRecentExpenses] = useState<ExpenseResponse[]>([]);
+  const [recentGroups, setRecentGroups] = useState<GroupResponse[]>([]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const now = new Date();
+      const currentMonthStart = startOfMonth(now);
+      const currentMonthEnd = endOfMonth(now);
+      const previousMonthStart = startOfMonth(subMonths(now, 1));
+      const previousMonthEnd = endOfMonth(subMonths(now, 1));
+
+      // Cargar gastos del mes actual y anterior
+      const [currentExpensesRes, previousExpensesRes, groupsRes, budgetsRes, settlementsRes] = await Promise.all([
+        expensesApi.getAll({ page: 0, size: 1000 }),
+        expensesApi.getAll({ page: 0, size: 1000 }),
+        groupsApi.getAll({ page: 0, size: 100 }),
+        budgetsApi.getAll(),
+        settlementsApi.getAll(),
+      ]);
+
+      if (!currentExpensesRes.success || !groupsRes.success || !budgetsRes.success) {
+        throw new Error('Error al cargar datos del dashboard');
+      }
+
+      const currentExpenses = currentExpensesRes.data.content.filter((exp: ExpenseResponse) => {
+        const expDate = parseISO(exp.date);
+        return expDate >= currentMonthStart && expDate <= currentMonthEnd;
+      });
+
+      const previousExpenses = previousExpensesRes.data.content.filter((exp: ExpenseResponse) => {
+        const expDate = parseISO(exp.date);
+        return expDate >= previousMonthStart && expDate <= previousMonthEnd;
+      });
+
+      // Calcular totales
+      const currentTotal = currentExpenses.reduce((sum: number, exp: ExpenseResponse) => sum + exp.amount, 0);
+      const previousTotal = previousExpenses.reduce((sum: number, exp: ExpenseResponse) => sum + exp.amount, 0);
+      setTotalExpenses(currentTotal);
+      setPreviousMonthExpenses(previousTotal);
+
+      // Calcular grupos activos
+      setActiveGroups(groupsRes.data.content.length);
+
+      // Calcular presupuesto disponible
+      const currentBudgets = budgetsRes.data.content.filter((budget: BudgetResponse) => 
+        budget.month === now.getMonth() + 1 && budget.year === now.getFullYear()
+      );
+      const totalBudget = currentBudgets.reduce((sum: number, budget: BudgetResponse) => sum + budget.amount, 0);
+      setBudgetAvailable(totalBudget - currentTotal);
+
+      // Calcular balance (de settlements)
+      if (settlementsRes.success && user?.id) {
+        const userSettlements = settlementsRes.data.content.filter((settlement: SettlementResponse) => {
+          // Filtrar settlements donde el usuario debe recibir dinero (RECEIPT) o pagar (PAYMENT)
+          const isReceipt = settlement.type === 'RECEIPT' && settlement.settledWithUser.id === user.id;
+          const isPayment = settlement.type === 'PAYMENT' && settlement.initiatedBy.id === user.id;
+          return isReceipt || isPayment;
+        });
+        const totalBalance = userSettlements.reduce((sum: number, settlement: SettlementResponse) => {
+          // Si es RECEIPT, el usuario recibe dinero (positivo)
+          // Si es PAYMENT, el usuario paga dinero (negativo)
+          const amount = settlement.type === 'RECEIPT' ? settlement.amount : -settlement.amount;
+          return sum + amount;
+        }, 0);
+        setBalance(Math.max(0, totalBalance)); // Solo mostrar balance positivo
+      }
+
+      // Preparar datos para gráfico semanal
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+      const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+      
+      const weekData: ChartDataPoint[] = weekDays.map((day, index) => {
+        const dayExpenses = currentExpenses.filter((exp: ExpenseResponse) => {
+          const expDate = parseISO(exp.date);
+          return format(expDate, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd');
+        });
+        const dayAmount = dayExpenses.reduce((sum: number, exp: ExpenseResponse) => sum + exp.amount, 0);
+        
+        // Obtener datos del día anterior de la semana pasada
+        const previousWeekDay = subMonths(day, 0); // Ajustar según necesidad
+        const previousDayExpenses = previousExpenses.filter((exp: ExpenseResponse) => {
+          const expDate = parseISO(exp.date);
+          return format(expDate, 'yyyy-MM-dd') === format(previousWeekDay, 'yyyy-MM-dd');
+        });
+        const previousDayAmount = previousDayExpenses.reduce((sum: number, exp: ExpenseResponse) => sum + exp.amount, 0);
+
+        return {
+          date: format(day, 'EEE', { locale: es }).slice(0, 3),
+          amount: dayAmount,
+          previousAmount: previousDayAmount,
+        };
+      });
+      setExpenseChartData(weekData);
+
+      // Preparar datos para gráfico de categorías
+      const categoryMap = new Map<string, number>();
+      currentExpenses.forEach((exp: ExpenseResponse) => {
+        const categoryName = exp.category?.name || 'Sin categoría';
+        categoryMap.set(categoryName, (categoryMap.get(categoryName) || 0) + exp.amount);
+      });
+      
+      const colors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
+      const categoryData: CategoryDataPoint[] = Array.from(categoryMap.entries())
+        .map(([name, value], index) => ({
+          name,
+          value,
+          color: colors[index % colors.length],
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+      setCategoryChartData(categoryData);
+
+      // Gastos recientes (últimos 3)
+      const sortedExpenses = [...currentExpensesRes.data.content]
+        .sort((a: ExpenseResponse, b: ExpenseResponse) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+        .slice(0, 3);
+      setRecentExpenses(sortedExpenses);
+
+      // Grupos recientes (últimos 3)
+      const sortedGroups = [...groupsRes.data.content]
+        .sort((a: GroupResponse, b: GroupResponse) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+        .slice(0, 3);
+      setRecentGroups(sortedGroups);
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al cargar el dashboard';
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const calculateTrend = (current: number, previous: number) => {
+    if (previous === 0) return { value: 0, isPositive: true };
+    const change = ((current - previous) / previous) * 100;
+    return {
+      value: Math.abs(Math.round(change)),
+      isPositive: change >= 0,
+    };
+  };
+
+  const formatRelativeDate = (dateString: string) => {
+    const date = parseISO(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Hace menos de una hora';
+    if (diffInHours < 24) return `Hace ${diffInHours} hora${diffInHours > 1 ? 's' : ''}`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays === 1) return 'Ayer';
+    if (diffInDays < 7) return `Hace ${diffInDays} días`;
+    return format(date, 'dd/MM/yyyy');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  const expensesTrend = calculateTrend(totalExpenses, previousMonthExpenses);
 
   return (
     <div className="space-y-6">
@@ -50,44 +243,46 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Gastos Totales"
-          value="$1,000.00"
+          value={formatCurrency(totalExpenses)}
           description="Este mes"
           icon={Receipt}
-          trend={{ value: 12, label: 'vs mes anterior', isPositive: false }}
+          trend={{ 
+            value: expensesTrend.value, 
+            label: 'vs mes anterior', 
+            isPositive: !expensesTrend.isPositive 
+          }}
           variant="danger"
-          onClick={() => router.push('/expenses')}
+          onClick={() => router.push('/dashboard/expenses')}
         />
         <MetricCard
           title="Grupos Activos"
-          value="3"
+          value={activeGroups.toString()}
           description="Participando"
           icon={Users}
-          trend={{ value: 1, label: 'nuevo este mes', isPositive: true }}
           variant="success"
-          onClick={() => router.push('/groups')}
+          onClick={() => router.push('/dashboard/groups')}
         />
         <MetricCard
           title="Presupuesto"
-          value="$2,500.00"
+          value={formatCurrency(Math.max(0, budgetAvailable))}
           description="Disponible este mes"
           icon={Wallet}
           variant="default"
-          onClick={() => router.push('/budgets')}
+          onClick={() => router.push('/dashboard/budgets')}
         />
         <MetricCard
           title="Balance"
-          value="$1,500.00"
+          value={formatCurrency(balance)}
           description="A tu favor"
           icon={TrendingUp}
-          trend={{ value: 8, label: 'vs mes anterior', isPositive: true }}
           variant="success"
         />
       </div>
 
       {/* Visualizaciones - Gráficos comprensibles */}
       <div className="grid gap-4 md:grid-cols-2">
-        <ExpenseChart data={mockExpenseData} period="week" />
-        <CategoryChart data={mockCategoryData} />
+        <ExpenseChart data={expenseChartData} period="week" />
+        <CategoryChart data={categoryChartData} />
       </div>
 
       {/* Información contextual - Gastos recientes y grupos */}
@@ -96,7 +291,7 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Gastos Recientes</CardTitle>
             <button
-              onClick={() => router.push('/expenses')}
+              onClick={() => router.push('/dashboard/expenses')}
               className="text-sm text-primary hover:underline flex items-center gap-1"
             >
               Ver todos
@@ -105,23 +300,27 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { name: 'Cena en restaurante', amount: 85.50, date: 'Hoy' },
-                { name: 'Uber', amount: 25.00, date: 'Ayer' },
-                { name: 'Supermercado', amount: 120.30, date: '2 días' },
-              ].map((expense, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => router.push('/expenses')}
-                >
-                  <div>
-                    <p className="text-sm font-medium">{expense.name}</p>
-                    <p className="text-xs text-muted-foreground">{expense.date}</p>
+              {recentExpenses.length > 0 ? (
+                recentExpenses.map((expense) => (
+                  <div
+                    key={expense.id}
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => router.push('/dashboard/expenses')}
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{expense.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatRelativeDate(expense.createdAt)}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold">{formatCurrency(expense.amount)}</p>
                   </div>
-                  <p className="text-sm font-semibold">${expense.amount}</p>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No hay gastos recientes
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -130,7 +329,7 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Grupos Activos</CardTitle>
             <button
-              onClick={() => router.push('/groups')}
+              onClick={() => router.push('/dashboard/groups')}
               className="text-sm text-primary hover:underline flex items-center gap-1"
             >
               Ver todos
@@ -139,35 +338,26 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { name: 'Viaje a París', members: 4, balance: -45.20 },
-                { name: 'Casa compartida', members: 3, balance: 120.50 },
-                { name: 'Cena semanal', members: 5, balance: 0 },
-              ].map((group, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => router.push('/groups')}
-                >
-                  <div>
-                    <p className="text-sm font-medium">{group.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {group.members} miembros
-                    </p>
-                  </div>
-                  <p
-                    className={`text-sm font-semibold ${
-                      group.balance > 0
-                        ? 'text-success'
-                        : group.balance < 0
-                        ? 'text-destructive'
-                        : 'text-muted-foreground'
-                    }`}
+              {recentGroups.length > 0 ? (
+                recentGroups.map((group) => (
+                  <div
+                    key={group.id}
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => router.push('/dashboard/groups')}
                   >
-                    {group.balance > 0 && '+'}${Math.abs(group.balance)}
-                  </p>
-                </div>
-              ))}
+                    <div>
+                      <p className="text-sm font-medium">{group.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {group.members.length} miembro{group.members.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No hay grupos activos
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

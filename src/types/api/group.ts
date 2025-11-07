@@ -28,3 +28,12 @@ export interface UpdateGroupRequest {
   image?: string;
 }
 
+export interface UpdateGroupMemberRequest {
+  role?: 'ADMIN' | 'MEMBER' | 'GUEST' | 'ASSISTANT';
+  permissions?: Record<string, boolean>;
+}
+
+export interface AssignPermissionsRequest {
+  permissions: Record<string, boolean>;
+}
+

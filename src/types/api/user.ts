@@ -7,6 +7,7 @@ export interface UserResponse {
   image?: string;
   currency: string;
   language: string;
+  role?: string;
   createdAt: string;
 }
 
@@ -23,6 +24,29 @@ export interface ChangePasswordRequest {
 }
 
 export interface UpdatePreferencesRequest {
+  currency?: string;
+  language?: string;
+}
+
+// Admin types
+export interface CreateUserRequest {
+  name: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phoneNumber?: string;
+  role?: string;
+  currency?: string;
+  language?: string;
+}
+
+export interface UpdateUserRequest {
+  name?: string;
+  lastName?: string;
+  email?: string;
+  phoneNumber?: string;
+  image?: string;
+  role?: string;
   currency?: string;
   language?: string;
 }

@@ -6,3 +6,15 @@ export interface CategoryResponse {
   createdAt: string;
 }
 
+export interface CreateCategoryRequest {
+  name: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface UpdateCategoryRequest {
+  name?: string;
+  icon?: string;
+  color?: string;
+}
+

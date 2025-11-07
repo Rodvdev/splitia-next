@@ -9,4 +9,7 @@ export * from './api/message';
 export * from './api/settlement';
 export * from './api/subscription';
 export * from './api/support';
+export * from './api/conversation';
+export * from './api/group-invitation';
+export * from './api/group-user';
 

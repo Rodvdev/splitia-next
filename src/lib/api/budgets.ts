@@ -1,9 +1,9 @@
 import { apiClient } from './client';
-import { ApiResponse, Page, BudgetResponse, CreateBudgetRequest, UpdateBudgetRequest } from '@/types';
+import { ApiResponse, Page, Pageable, BudgetResponse, CreateBudgetRequest, UpdateBudgetRequest } from '@/types';
 
 export const budgetsApi = {
-  getAll: async (): Promise<ApiResponse<Page<BudgetResponse>>> => {
-    const response = await apiClient.instance.get('/budgets');
+  getAll: async (pageable?: Pageable): Promise<ApiResponse<Page<BudgetResponse>>> => {
+    const response = await apiClient.instance.get('/budgets', { params: pageable });
     return response.data;
   },
 

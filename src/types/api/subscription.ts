@@ -10,3 +10,14 @@ export interface SubscriptionResponse {
   createdAt: string;
 }
 
+export interface CreateSubscriptionRequest {
+  planType: 'FREE' | 'PREMIUM' | 'ENTERPRISE';
+  paymentMethod: string;
+}
+
+export interface UpdateSubscriptionRequest {
+  planType?: 'FREE' | 'PREMIUM' | 'ENTERPRISE';
+  status?: 'ACTIVE' | 'INACTIVE' | 'CANCELLED' | 'EXPIRED' | 'PAST_DUE';
+  autoRenew?: boolean;
+}
+

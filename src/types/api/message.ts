@@ -13,3 +13,7 @@ export interface SendMessageRequest {
   content: string;
 }
 
+export interface UpdateMessageRequest {
+  content: string;
+}
+

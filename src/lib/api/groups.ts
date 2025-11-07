@@ -1,5 +1,14 @@
 import { apiClient } from './client';
-import { ApiResponse, Page, Pageable, GroupResponse, CreateGroupRequest, UpdateGroupRequest } from '@/types';
+import {
+  ApiResponse,
+  Page,
+  Pageable,
+  GroupResponse,
+  CreateGroupRequest,
+  UpdateGroupRequest,
+  UpdateGroupMemberRequest,
+  AssignPermissionsRequest,
+} from '@/types';
 
 export const groupsApi = {
   getAll: async (pageable?: Pageable): Promise<ApiResponse<Page<GroupResponse>>> => {
@@ -36,6 +45,27 @@ export const groupsApi = {
 
   removeMember: async (groupId: string, userId: string): Promise<ApiResponse<void>> => {
     const response = await apiClient.instance.delete(`/groups/${groupId}/members/${userId}`);
+    return response.data;
+  },
+
+  updateMember: async (
+    groupId: string,
+    userId: string,
+    data: UpdateGroupMemberRequest
+  ): Promise<ApiResponse<void>> => {
+    const response = await apiClient.instance.put(`/groups/${groupId}/members/${userId}`, data);
+    return response.data;
+  },
+
+  assignPermissions: async (
+    groupId: string,
+    userId: string,
+    data: AssignPermissionsRequest
+  ): Promise<ApiResponse<void>> => {
+    const response = await apiClient.instance.post(
+      `/groups/${groupId}/members/${userId}/permissions`,
+      data
+    );
     return response.data;
   },
 };

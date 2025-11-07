@@ -12,6 +12,12 @@ import {
   User,
   CreditCard,
   HelpCircle,
+  Tag,
+  Share2,
+  FileText,
+  Mail,
+  UserCheck,
+  UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -28,8 +34,20 @@ const navigation = [
 ];
 
 const adminNavigation = [
-  { name: 'Admin Dashboard', href: '/admin', icon: LayoutDashboard },
+  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Usuarios', href: '/admin/users', icon: Users },
+  { name: 'Grupos', href: '/admin/groups', icon: Users },
+  { name: 'Gastos', href: '/admin/expenses', icon: Receipt },
+  { name: 'Participaciones', href: '/admin/expense-shares', icon: Share2 },
+  { name: 'Presupuestos', href: '/admin/budgets', icon: Wallet },
+  { name: 'Categorías', href: '/admin/categories', icon: Tag },
+  { name: 'Conversaciones', href: '/admin/conversations', icon: MessageSquare },
+  { name: 'Mensajes', href: '/admin/messages', icon: Mail },
+  { name: 'Liquidaciones', href: '/admin/settlements', icon: FileText },
+  { name: 'Suscripciones', href: '/admin/subscriptions', icon: CreditCard },
+  { name: 'Tickets', href: '/admin/support-tickets', icon: HelpCircle },
+  { name: 'Invitaciones', href: '/admin/group-invitations', icon: UserPlus },
+  { name: 'Miembros', href: '/admin/group-users', icon: UserCheck },
 ];
 
 export function Sidebar() {
@@ -39,7 +57,7 @@ export function Sidebar() {
   const navItems = isAdmin ? adminNavigation : navigation;
 
   return (
-    <aside className="w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border min-h-screen">
+    <aside className="w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border h-screen fixed left-0 top-0 overflow-y-auto">
       <div className="p-4">
         <h2 className="text-xl font-bold mb-6">Splitia</h2>
         <nav className="space-y-2">

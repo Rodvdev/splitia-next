@@ -1,9 +1,9 @@
 import { apiClient } from './client';
-import { ApiResponse, Page, SupportTicketResponse, CreateSupportTicketRequest } from '@/types';
+import { ApiResponse, Page, Pageable, SupportTicketResponse, CreateSupportTicketRequest } from '@/types';
 
 export const supportApi = {
-  getAll: async (): Promise<ApiResponse<Page<SupportTicketResponse>>> => {
-    const response = await apiClient.instance.get('/support/tickets');
+  getAll: async (pageable?: Pageable): Promise<ApiResponse<Page<SupportTicketResponse>>> => {
+    const response = await apiClient.instance.get('/support/tickets', { params: pageable });
     return response.data;
   },
 
@@ -16,5 +16,6 @@ export const supportApi = {
     const response = await apiClient.instance.post('/support/tickets', data);
     return response.data;
   },
+  // Note: UPDATE and DELETE are only available for admins via adminApi
 };
 

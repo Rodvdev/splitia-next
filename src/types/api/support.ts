@@ -21,3 +21,11 @@ export interface CreateSupportTicketRequest {
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 }
 
+export interface UpdateSupportTicketRequest {
+  title?: string;
+  description?: string;
+  status?: 'OPEN' | 'IN_PROGRESS' | 'PENDING_CUSTOMER' | 'RESOLVED' | 'CLOSED';
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  resolution?: string;
+}
+

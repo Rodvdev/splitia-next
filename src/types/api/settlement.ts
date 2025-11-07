@@ -21,3 +21,9 @@ export interface CreateSettlementRequest {
   type: 'PAYMENT' | 'RECEIPT';
 }
 
+export interface UpdateSettlementRequest {
+  amount?: number;
+  description?: string;
+  status?: 'PENDING' | 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+}
+
