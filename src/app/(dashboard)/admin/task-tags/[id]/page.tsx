@@ -18,6 +18,7 @@ import { ArrowLeft, Edit, Save, X, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateTaskTagSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido').optional(),
@@ -69,10 +70,23 @@ export default function TaskTagDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getTaskTagById(tagId);
+      apiLogger.tags({
+        endpoint: 'getTaskTagById',
+        success: response.success,
+        params: { id: tagId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setTag(response.data);
       }
     } catch (err: any) {
+      apiLogger.tags({
+        endpoint: 'getTaskTagById',
+        success: false,
+        params: { id: tagId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar la etiqueta');
     } finally {
       setLoading(false);
@@ -81,18 +95,31 @@ export default function TaskTagDetailPage() {
 
   const onSubmit = async (data: UpdateTaskTagFormData) => {
     setIsSaving(true);
+    const request: UpdateTaskTagRequest = {
+      name: data.name,
+      color: data.color,
+    };
     try {
-      const request: UpdateTaskTagRequest = {
-        name: data.name,
-        color: data.color,
-      };
       const response = await adminApi.updateTaskTag(tagId, request);
+      apiLogger.tags({
+        endpoint: 'updateTaskTag',
+        success: response.success,
+        params: { id: tagId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Etiqueta actualizada exitosamente');
         setTag(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.tags({
+        endpoint: 'updateTaskTag',
+        success: false,
+        params: { id: tagId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar la etiqueta');
     } finally {
       setIsSaving(false);
@@ -107,11 +134,24 @@ export default function TaskTagDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteTaskTag(tagId);
+      apiLogger.tags({
+        endpoint: 'deleteTaskTag',
+        success: response.success,
+        params: { id: tagId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Etiqueta eliminada correctamente');
         router.push('/admin/task-tags');
       }
     } catch (err: any) {
+      apiLogger.tags({
+        endpoint: 'deleteTaskTag',
+        success: false,
+        params: { id: tagId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar la etiqueta');
     } finally {
       setIsDeleting(false);

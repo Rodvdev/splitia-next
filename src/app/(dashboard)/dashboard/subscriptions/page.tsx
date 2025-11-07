@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { CreditCard, CheckCircle, XCircle, AlertCircle, Settings } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
 import Link from 'next/link';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const PLAN_LABELS: Record<string, string> = {
   FREE: 'Gratuito',
@@ -49,10 +50,23 @@ export default function SubscriptionsPage() {
       setLoading(true);
       setError(null);
       const response = await subscriptionsApi.getCurrent();
+      apiLogger.subscriptions({
+        endpoint: 'getCurrent',
+        success: response.success,
+        params: {},
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setSubscription(response.data);
       }
     } catch (err) {
+      apiLogger.subscriptions({
+        endpoint: 'getCurrent',
+        success: false,
+        params: {},
+        error: err,
+      });
       // Si no hay suscripción, el error es esperado
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar la suscripción';
       if (errorMessage.includes('404') || errorMessage.includes('not found')) {

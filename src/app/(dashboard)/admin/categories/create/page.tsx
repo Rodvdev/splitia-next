@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateCategoryRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createCategorySchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -36,18 +37,31 @@ export default function CreateCategoryPage() {
 
   const onSubmit = async (data: CreateCategoryFormData) => {
     setIsLoading(true);
+    const request: CreateCategoryRequest = {
+      name: data.name,
+      icon: data.icon,
+      color: data.color,
+    };
     try {
-      const request: CreateCategoryRequest = {
-        name: data.name,
-        icon: data.icon,
-        color: data.color,
-      };
       const response = await adminApi.createCategory(request);
+      apiLogger.categories({
+        endpoint: 'createCategory',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Categoría creada exitosamente');
         router.push('/admin/categories');
       }
     } catch (error: any) {
+      apiLogger.categories({
+        endpoint: 'createCategory',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear la categoría');
     } finally {
       setIsLoading(false);

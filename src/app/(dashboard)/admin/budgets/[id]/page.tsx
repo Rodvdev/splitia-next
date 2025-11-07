@@ -18,6 +18,7 @@ import { ArrowLeft, Wallet, Calendar, Tag, DollarSign, Edit, Save, X } from 'luc
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateBudgetSchema = z.object({
   amount: z.number().min(0.01, 'El monto debe ser mayor a 0').optional(),
@@ -66,10 +67,23 @@ export default function BudgetDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getBudgetById(budgetId);
+      apiLogger.budgets({
+        endpoint: 'getBudgetById',
+        success: response.success,
+        params: { id: budgetId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setBudget(response.data);
       }
     } catch (err: any) {
+      apiLogger.budgets({
+        endpoint: 'getBudgetById',
+        success: false,
+        params: { id: budgetId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar el presupuesto');
     } finally {
       setLoading(false);
@@ -78,18 +92,31 @@ export default function BudgetDetailPage() {
 
   const onSubmit = async (data: UpdateBudgetFormData) => {
     setIsSaving(true);
+    const request: UpdateBudgetRequest = {
+      amount: data.amount,
+      currency: data.currency,
+    };
     try {
-      const request: UpdateBudgetRequest = {
-        amount: data.amount,
-        currency: data.currency,
-      };
       const response = await adminApi.updateBudget(budgetId, request);
+      apiLogger.budgets({
+        endpoint: 'updateBudget',
+        success: response.success,
+        params: { id: budgetId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Presupuesto actualizado exitosamente');
         setBudget(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.budgets({
+        endpoint: 'updateBudget',
+        success: false,
+        params: { id: budgetId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar el presupuesto');
     } finally {
       setIsSaving(false);
@@ -104,11 +131,24 @@ export default function BudgetDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteBudget(budgetId);
+      apiLogger.budgets({
+        endpoint: 'deleteBudget',
+        success: response.success,
+        params: { id: budgetId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Presupuesto eliminado correctamente');
         router.push('/admin/budgets');
       }
     } catch (err: any) {
+      apiLogger.budgets({
+        endpoint: 'deleteBudget',
+        success: false,
+        params: { id: budgetId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar el presupuesto');
     } finally {
       setIsDeleting(false);

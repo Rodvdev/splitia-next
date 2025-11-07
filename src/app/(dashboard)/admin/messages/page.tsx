@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, MoreVertical, Mail, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AdminMessagesPage() {
   const [messages, setMessages] = useState<MessageResponse[]>([]);
@@ -26,10 +28,21 @@ export default function AdminMessagesPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllMessages({ page: 0, size: 50 });
-      if (response.success) {
-        setMessages(response.data.content);
-      }
+      apiLogger.messages({
+        endpoint: 'getAllMessages',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setMessages(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.messages({
+        endpoint: 'getAllMessages',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading messages:', error);
     } finally {
       setLoading(false);

@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateSubscriptionRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createSubscriptionSchema = z.object({
   planType: z.enum(['FREE', 'PREMIUM', 'ENTERPRISE'], { required_error: 'El tipo de plan es requerido' }),
@@ -35,17 +36,30 @@ export default function CreateSubscriptionPage() {
 
   const onSubmit = async (data: CreateSubscriptionFormData) => {
     setIsLoading(true);
+    const request: CreateSubscriptionRequest = {
+      planType: data.planType,
+      paymentMethod: data.paymentMethod,
+    };
     try {
-      const request: CreateSubscriptionRequest = {
-        planType: data.planType,
-        paymentMethod: data.paymentMethod,
-      };
       const response = await adminApi.createSubscription(request);
+      apiLogger.subscriptions({
+        endpoint: 'createSubscription',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Suscripción creada exitosamente');
         router.push('/admin/subscriptions');
       }
     } catch (error: any) {
+      apiLogger.subscriptions({
+        endpoint: 'createSubscription',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear la suscripción');
     } finally {
       setIsLoading(false);

@@ -19,6 +19,8 @@ import { groupsApi } from '@/lib/api/groups';
 import { CreateTaskRequest, GroupResponse, UserResponse, TaskPriority, ExpenseResponse, ExpenseShareRequest } from '@/types';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 const createTaskSchema = z.object({
   title: z.string().min(1, 'El título es requerido'),
@@ -59,7 +61,6 @@ export default function CreateTaskPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [groups, setGroups] = useState<GroupResponse[]>([]);
-  const [users, setUsers] = useState<UserResponse[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
   const [groupMembers, setGroupMembers] = useState<UserResponse[]>([]);
@@ -106,17 +107,24 @@ export default function CreateTaskPage() {
   const loadData = async () => {
     try {
       setLoadingData(true);
-      const [groupsRes, usersRes] = await Promise.all([
-        adminApi.getAllGroups({ page: 0, size: 100 }),
-        adminApi.getAllUsers({ page: 0, size: 100 }),
-      ]);
+      const groupsRes = await adminApi.getAllGroups({ page: 0, size: 100 });
+      apiLogger.groups({
+        endpoint: 'getAllGroups (for create task)',
+        success: groupsRes.success,
+        params: { page: 0, size: 100 },
+        data: groupsRes.data,
+        error: groupsRes.success ? null : groupsRes,
+      });
       if (groupsRes.success) {
-        setGroups(groupsRes.data.content);
-      }
-      if (usersRes.success) {
-        setUsers(usersRes.data.content);
+        setGroups(extractDataFromResponse(groupsRes));
       }
     } catch (error) {
+      apiLogger.groups({
+        endpoint: 'getAllGroups (for create task)',
+        success: false,
+        params: { page: 0, size: 100 },
+        error: error,
+      });
       console.error('Error loading data:', error);
     } finally {
       setLoadingData(false);
@@ -130,15 +138,36 @@ export default function CreateTaskPage() {
         expensesApi.getAll({ groupId, page: 0, size: 100 }),
       ]);
 
+      apiLogger.groups({
+        endpoint: 'getById (for create task)',
+        success: groupRes.success,
+        params: { id: groupId },
+        data: groupRes.data,
+        error: groupRes.success ? null : groupRes,
+      });
+      apiLogger.expenses({
+        endpoint: 'getAll (for create task)',
+        success: expensesRes.success,
+        params: { groupId, page: 0, size: 100 },
+        data: expensesRes.data,
+        error: expensesRes.success ? null : expensesRes,
+      });
+
       if (groupRes.success) {
         const members = groupRes.data.members.map(m => m.user);
         setGroupMembers(members);
       }
 
       if (expensesRes.success) {
-        setExpenses(expensesRes.data.content);
+        setExpenses(extractDataFromResponse(expensesRes));
       }
     } catch (error) {
+      apiLogger.general({
+        endpoint: 'loadGroupData (for create task)',
+        success: false,
+        params: { groupId },
+        error: error,
+      });
       console.error('Error loading group data:', error);
     }
   };
@@ -160,33 +189,46 @@ export default function CreateTaskPage() {
 
   const onSubmit = async (data: CreateTaskFormData) => {
     setIsLoading(true);
+    const request: CreateTaskRequest = {
+      title: data.title,
+      description: data.description,
+      groupId: data.groupId,
+      assignedToId: data.assignedToId,
+      priority: data.priority as TaskPriority | undefined,
+      startDate: data.startDate,
+      dueDate: data.dueDate,
+    };
+
+    if (data.expenseMode === 'reference' && data.expenseId) {
+      request.expenseId = data.expenseId;
+    } else if (data.expenseMode === 'create' || data.expenseMode === 'store') {
+      request.createFutureExpense = data.expenseMode === 'create';
+      request.futureExpenseAmount = data.futureExpenseAmount;
+      request.futureExpenseCurrency = data.futureExpenseCurrency || 'USD';
+      request.futureExpensePaidById = data.futureExpensePaidById;
+      request.futureExpenseShares = data.futureExpenseShares;
+    }
+
     try {
-      const request: CreateTaskRequest = {
-        title: data.title,
-        description: data.description,
-        groupId: data.groupId,
-        assignedToId: data.assignedToId,
-        priority: data.priority as TaskPriority | undefined,
-        startDate: data.startDate,
-        dueDate: data.dueDate,
-      };
-
-      if (data.expenseMode === 'reference' && data.expenseId) {
-        request.expenseId = data.expenseId;
-      } else if (data.expenseMode === 'create' || data.expenseMode === 'store') {
-        request.createFutureExpense = data.expenseMode === 'create';
-        request.futureExpenseAmount = data.futureExpenseAmount;
-        request.futureExpenseCurrency = data.futureExpenseCurrency || 'USD';
-        request.futureExpensePaidById = data.futureExpensePaidById;
-        request.futureExpenseShares = data.futureExpenseShares;
-      }
-
       const response = await adminApi.createTask(request);
+      apiLogger.tasks({
+        endpoint: 'createTask',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Tarea creada exitosamente');
         router.push('/admin/tasks');
       }
     } catch (error: any) {
+      apiLogger.tasks({
+        endpoint: 'createTask',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear la tarea');
     } finally {
       setIsLoading(false);
@@ -254,15 +296,19 @@ export default function CreateTaskPage() {
                 <select
                   id="assignedToId"
                   {...register('assignedToId')}
+                  disabled={!selectedGroupId}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Sin asignar</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} {user.lastName} ({user.email})
+                  {groupMembers.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name} {member.lastName} ({member.email})
                     </option>
                   ))}
                 </select>
+                {!selectedGroupId && (
+                  <p className="text-xs text-muted-foreground">Selecciona un grupo primero</p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

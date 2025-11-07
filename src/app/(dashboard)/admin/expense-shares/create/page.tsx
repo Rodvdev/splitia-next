@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateExpenseShareRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createExpenseShareSchema = z.object({
   expenseId: z.string().min(1, 'El ID del gasto es requerido'),
@@ -39,19 +40,32 @@ export default function CreateExpenseSharePage() {
 
   const onSubmit = async (data: CreateExpenseShareFormData) => {
     setIsLoading(true);
+    const request: CreateExpenseShareRequest = {
+      expenseId: data.expenseId,
+      userId: data.userId,
+      amount: data.amount,
+      type: data.type,
+    };
     try {
-      const request: CreateExpenseShareRequest = {
-        expenseId: data.expenseId,
-        userId: data.userId,
-        amount: data.amount,
-        type: data.type,
-      };
       const response = await adminApi.createExpenseShare(request);
+      apiLogger.expenses({
+        endpoint: 'createExpenseShare',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Participación creada exitosamente');
         router.push('/admin/expense-shares');
       }
     } catch (error: any) {
+      apiLogger.expenses({
+        endpoint: 'createExpenseShare',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear la participación');
     } finally {
       setIsLoading(false);

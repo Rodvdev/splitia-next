@@ -18,6 +18,7 @@ import { ArrowLeft, Users, Calendar, User, Edit, Save, X } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateGroupSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
@@ -68,10 +69,23 @@ export default function GroupDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getGroupById(groupId);
+      apiLogger.groups({
+        endpoint: 'getGroupById',
+        success: response.success,
+        params: { id: groupId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setGroup(response.data);
       }
     } catch (err: any) {
+      apiLogger.groups({
+        endpoint: 'getGroupById',
+        success: false,
+        params: { id: groupId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar el grupo');
     } finally {
       setLoading(false);
@@ -80,12 +94,12 @@ export default function GroupDetailPage() {
 
   const onSubmit = async (data: UpdateGroupFormData) => {
     setIsSaving(true);
+    const request: UpdateGroupRequest = {
+      name: data.name,
+      description: data.description,
+      image: data.image,
+    };
     try {
-      const request: UpdateGroupRequest = {
-        name: data.name,
-        description: data.description,
-        image: data.image,
-      };
       const response = await adminApi.updateGroup(groupId, request);
       if (response.success) {
         toast.success('Grupo actualizado exitosamente');
@@ -107,11 +121,24 @@ export default function GroupDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteGroup(groupId);
+      apiLogger.groups({
+        endpoint: 'deleteGroup',
+        success: response.success,
+        params: { id: groupId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Grupo eliminado correctamente');
         router.push('/admin/groups');
       }
     } catch (err: any) {
+      apiLogger.groups({
+        endpoint: 'deleteGroup',
+        success: false,
+        params: { id: groupId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar el grupo');
     } finally {
       setIsDeleting(false);

@@ -17,6 +17,7 @@ import { ArrowLeft, UserPlus, Calendar, Tag, Users, Mail, Edit, Save, X } from '
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateGroupInvitationSchema = z.object({
   status: z.enum(['PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED']).optional(),
@@ -63,10 +64,23 @@ export default function GroupInvitationDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getGroupInvitationById(invitationId);
+      apiLogger.general({
+        endpoint: 'getGroupInvitationById',
+        success: response.success,
+        params: { id: invitationId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setInvitation(response.data);
       }
     } catch (err: any) {
+      apiLogger.general({
+        endpoint: 'getGroupInvitationById',
+        success: false,
+        params: { id: invitationId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar la invitación');
     } finally {
       setLoading(false);
@@ -75,17 +89,30 @@ export default function GroupInvitationDetailPage() {
 
   const onSubmit = async (data: UpdateGroupInvitationFormData) => {
     setIsSaving(true);
+    const request: UpdateGroupInvitationRequest = {
+      status: data.status,
+    };
     try {
-      const request: UpdateGroupInvitationRequest = {
-        status: data.status,
-      };
       const response = await adminApi.updateGroupInvitation(invitationId, request);
+      apiLogger.general({
+        endpoint: 'updateGroupInvitation',
+        success: response.success,
+        params: { id: invitationId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Invitación actualizada exitosamente');
         setInvitation(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.general({
+        endpoint: 'updateGroupInvitation',
+        success: false,
+        params: { id: invitationId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar la invitación');
     } finally {
       setIsSaving(false);
@@ -100,11 +127,24 @@ export default function GroupInvitationDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteGroupInvitation(invitationId);
+      apiLogger.general({
+        endpoint: 'deleteGroupInvitation',
+        success: response.success,
+        params: { id: invitationId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Invitación eliminada correctamente');
         router.push('/admin/group-invitations');
       }
     } catch (err: any) {
+      apiLogger.general({
+        endpoint: 'deleteGroupInvitation',
+        success: false,
+        params: { id: invitationId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar la invitación');
     } finally {
       setIsDeleting(false);

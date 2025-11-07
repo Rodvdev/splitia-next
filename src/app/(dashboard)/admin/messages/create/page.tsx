@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { SendMessageRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createMessageSchema = z.object({
   conversationId: z.string().min(1, 'El ID de conversación es requerido'),
@@ -35,17 +36,30 @@ export default function CreateMessagePage() {
 
   const onSubmit = async (data: CreateMessageFormData) => {
     setIsLoading(true);
+    const request: SendMessageRequest = {
+      conversationId: data.conversationId,
+      content: data.content,
+    };
     try {
-      const request: SendMessageRequest = {
-        conversationId: data.conversationId,
-        content: data.content,
-      };
       const response = await adminApi.createMessage(request);
+      apiLogger.messages({
+        endpoint: 'createMessage',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Mensaje creado exitosamente');
         router.push('/admin/messages');
       }
     } catch (error: any) {
+      apiLogger.messages({
+        endpoint: 'createMessage',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear el mensaje');
     } finally {
       setIsLoading(false);

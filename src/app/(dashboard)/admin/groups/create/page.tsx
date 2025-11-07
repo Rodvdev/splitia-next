@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateGroupRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createGroupSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -36,18 +37,31 @@ export default function CreateGroupPage() {
 
   const onSubmit = async (data: CreateGroupFormData) => {
     setIsLoading(true);
+    const request: CreateGroupRequest = {
+      name: data.name,
+      description: data.description,
+      image: data.image,
+    };
     try {
-      const request: CreateGroupRequest = {
-        name: data.name,
-        description: data.description,
-        image: data.image,
-      };
       const response = await adminApi.createGroup(request);
+      apiLogger.groups({
+        endpoint: 'createGroup',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Grupo creado exitosamente');
         router.push('/admin/groups');
       }
     } catch (error: any) {
+      apiLogger.groups({
+        endpoint: 'createGroup',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear el grupo');
     } finally {
       setIsLoading(false);

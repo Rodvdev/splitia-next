@@ -14,6 +14,8 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateTaskTagRequest, GroupResponse } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 const createTaskTagSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido'),
@@ -48,10 +50,23 @@ export default function CreateTaskTagPage() {
     try {
       setLoadingData(true);
       const response = await adminApi.getAllGroups({ page: 0, size: 100 });
+      apiLogger.groups({
+        endpoint: 'getAllGroups (for create tag)',
+        success: response.success,
+        params: { page: 0, size: 100 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
-        setGroups(response.data.content);
+        setGroups(extractDataFromResponse(response));
       }
     } catch (error) {
+      apiLogger.groups({
+        endpoint: 'getAllGroups (for create tag)',
+        success: false,
+        params: { page: 0, size: 100 },
+        error: error,
+      });
       console.error('Error loading data:', error);
     } finally {
       setLoadingData(false);
@@ -60,18 +75,31 @@ export default function CreateTaskTagPage() {
 
   const onSubmit = async (data: CreateTaskTagFormData) => {
     setIsLoading(true);
+    const request: CreateTaskTagRequest = {
+      name: data.name,
+      color: data.color,
+      groupId: data.groupId,
+    };
     try {
-      const request: CreateTaskTagRequest = {
-        name: data.name,
-        color: data.color,
-        groupId: data.groupId,
-      };
       const response = await adminApi.createTaskTag(request);
+      apiLogger.tags({
+        endpoint: 'createTaskTag',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Etiqueta creada exitosamente');
         router.push('/admin/task-tags');
       }
     } catch (error: any) {
+      apiLogger.tags({
+        endpoint: 'createTaskTag',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear la etiqueta');
     } finally {
       setIsLoading(false);

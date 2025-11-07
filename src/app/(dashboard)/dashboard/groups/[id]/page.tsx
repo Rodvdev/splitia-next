@@ -11,6 +11,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { ArrowLeft, Users, Receipt, CheckSquare, Info } from 'lucide-react';
 import Link from 'next/link';
 import { GroupKanban } from '@/components/kanban/GroupKanban';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 export default function GroupDetailPage() {
   const params = useParams();
@@ -30,10 +31,23 @@ export default function GroupDetailPage() {
       setLoading(true);
       setError(null);
       const response = await groupsApi.getById(groupId);
+      apiLogger.groups({
+        endpoint: 'getById',
+        success: response.success,
+        params: { id: groupId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setGroup(response.data);
       }
     } catch (err: any) {
+      apiLogger.groups({
+        endpoint: 'getById',
+        success: false,
+        params: { id: groupId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar el grupo');
     } finally {
       setLoading(false);

@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, MoreVertical, Share2, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AdminExpenseSharesPage() {
   const [expenseShares, setExpenseShares] = useState<ExpenseShareResponse[]>([]);
@@ -26,10 +28,21 @@ export default function AdminExpenseSharesPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllExpenseShares({ page: 0, size: 50 });
-      if (response.success) {
-        setExpenseShares(response.data.content);
-      }
+      apiLogger.expenses({
+        endpoint: 'getAllExpenseShares',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setExpenseShares(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.expenses({
+        endpoint: 'getAllExpenseShares',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading expense shares:', error);
     } finally {
       setLoading(false);

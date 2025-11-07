@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, Plus, Users, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function GroupsPage() {
   const [groups, setGroups] = useState<GroupResponse[]>([]);
@@ -26,19 +28,31 @@ export default function GroupsPage() {
     try {
       setLoading(true);
       const response = await groupsApi.getAll({ page: 0, size: 50 });
-      if (response.success) {
-        setGroups(response.data.content);
-      }
+      apiLogger.groups({
+        endpoint: 'getAll',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setGroups(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.groups({
+        endpoint: 'getAll',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading groups:', error);
+      setGroups([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredGroups = groups.filter(
+  const filteredGroups = (groups || []).filter(
     (group) =>
-      group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       group.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -120,7 +134,7 @@ export default function GroupsPage() {
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm text-muted-foreground">
-                            {group.members.length} {group.members.length === 1 ? 'miembro' : 'miembros'}
+                            {group.members?.length || 0} {(group.members?.length || 0) === 1 ? 'miembro' : 'miembros'}
                           </span>
                         </div>
                         <ArrowRight className="h-4 w-4 text-muted-foreground" />

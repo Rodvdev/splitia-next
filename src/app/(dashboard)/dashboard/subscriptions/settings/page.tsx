@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { CreditCard, CheckCircle, XCircle, AlertCircle, Check, X, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Activa',
@@ -56,7 +57,7 @@ export default function SubscriptionSettingsPage() {
       }
 
       if (plansRes.success) {
-        setPlans(plansRes.data.content);
+        setPlans(extractDataFromResponse(plansRes));
       }
     } catch (error) {
       console.error('Error loading data:', error);

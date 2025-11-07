@@ -17,6 +17,7 @@ import { ArrowLeft, Tag, Calendar, Edit, Save, X } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateCategorySchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
@@ -67,10 +68,23 @@ export default function CategoryDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getCategoryById(categoryId);
+      apiLogger.categories({
+        endpoint: 'getCategoryById',
+        success: response.success,
+        params: { id: categoryId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setCategory(response.data);
       }
     } catch (err: any) {
+      apiLogger.categories({
+        endpoint: 'getCategoryById',
+        success: false,
+        params: { id: categoryId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar la categoría');
     } finally {
       setLoading(false);
@@ -79,19 +93,32 @@ export default function CategoryDetailPage() {
 
   const onSubmit = async (data: UpdateCategoryFormData) => {
     setIsSaving(true);
+    const request: UpdateCategoryRequest = {
+      name: data.name,
+      icon: data.icon,
+      color: data.color,
+    };
     try {
-      const request: UpdateCategoryRequest = {
-        name: data.name,
-        icon: data.icon,
-        color: data.color,
-      };
       const response = await adminApi.updateCategory(categoryId, request);
+      apiLogger.categories({
+        endpoint: 'updateCategory',
+        success: response.success,
+        params: { id: categoryId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Categoría actualizada exitosamente');
         setCategory(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.categories({
+        endpoint: 'updateCategory',
+        success: false,
+        params: { id: categoryId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar la categoría');
     } finally {
       setIsSaving(false);
@@ -106,11 +133,24 @@ export default function CategoryDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteCategory(categoryId);
+      apiLogger.categories({
+        endpoint: 'deleteCategory',
+        success: response.success,
+        params: { id: categoryId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Categoría eliminada correctamente');
         router.push('/admin/categories');
       }
     } catch (err: any) {
+      apiLogger.categories({
+        endpoint: 'deleteCategory',
+        success: false,
+        params: { id: categoryId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar la categoría');
     } finally {
       setIsDeleting(false);

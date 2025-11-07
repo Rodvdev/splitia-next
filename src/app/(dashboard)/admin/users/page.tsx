@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, Plus, MoreVertical } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserResponse[]>([]);
@@ -26,10 +28,21 @@ export default function AdminUsersPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllUsers({ page: 0, size: 50 });
-      if (response.success) {
-        setUsers(response.data.content);
-      }
+      apiLogger.users({
+        endpoint: 'getAllUsers',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setUsers(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.users({
+        endpoint: 'getAllUsers',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading users:', error);
     } finally {
       setLoading(false);

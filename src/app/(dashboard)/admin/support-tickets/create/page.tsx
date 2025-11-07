@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateSupportTicketRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createSupportTicketSchema = z.object({
   title: z.string().min(1, 'El título es requerido'),
@@ -39,19 +40,32 @@ export default function CreateSupportTicketPage() {
 
   const onSubmit = async (data: CreateSupportTicketFormData) => {
     setIsLoading(true);
+    const request: CreateSupportTicketRequest = {
+      title: data.title,
+      description: data.description,
+      category: data.category,
+      priority: data.priority,
+    };
     try {
-      const request: CreateSupportTicketRequest = {
-        title: data.title,
-        description: data.description,
-        category: data.category,
-        priority: data.priority,
-      };
       const response = await adminApi.createSupportTicket(request);
+      apiLogger.support({
+        endpoint: 'createSupportTicket',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Ticket creado exitosamente');
         router.push('/admin/support-tickets');
       }
     } catch (error: any) {
+      apiLogger.support({
+        endpoint: 'createSupportTicket',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear el ticket');
     } finally {
       setIsLoading(false);

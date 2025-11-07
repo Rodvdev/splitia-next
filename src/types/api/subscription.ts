@@ -1,3 +1,5 @@
+import { UserResponse } from './user';
+
 export interface SubscriptionResponse {
   id: string;
   planType: 'FREE' | 'PREMIUM' | 'ENTERPRISE';
@@ -8,6 +10,10 @@ export interface SubscriptionResponse {
   pricePerMonth: number;
   currency: string;
   createdAt: string;
+  user?: UserResponse;
+  userId?: string;
+  userEmail?: string;
+  userName?: string;
 }
 
 export interface CreateSubscriptionRequest {

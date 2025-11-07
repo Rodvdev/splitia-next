@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, MoreVertical, FileText, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AdminSettlementsPage() {
   const [settlements, setSettlements] = useState<SettlementResponse[]>([]);
@@ -26,10 +28,21 @@ export default function AdminSettlementsPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllSettlements({ page: 0, size: 50 });
-      if (response.success) {
-        setSettlements(response.data.content);
-      }
+      apiLogger.settlements({
+        endpoint: 'getAllSettlements',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setSettlements(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.settlements({
+        endpoint: 'getAllSettlements',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading settlements:', error);
     } finally {
       setLoading(false);

@@ -17,6 +17,7 @@ import { ArrowLeft, Calendar, Tag, Users, User, Edit, Save, X } from 'lucide-rea
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateGroupUserSchema = z.object({
   role: z.enum(['ADMIN', 'MEMBER', 'GUEST', 'ASSISTANT']).optional(),
@@ -63,10 +64,23 @@ export default function GroupUserDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getGroupUserById(groupUserId);
+      apiLogger.general({
+        endpoint: 'getGroupUserById',
+        success: response.success,
+        params: { id: groupUserId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setGroupUser(response.data);
       }
     } catch (err: any) {
+      apiLogger.general({
+        endpoint: 'getGroupUserById',
+        success: false,
+        params: { id: groupUserId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar la relación');
     } finally {
       setLoading(false);
@@ -75,17 +89,30 @@ export default function GroupUserDetailPage() {
 
   const onSubmit = async (data: UpdateGroupUserFormData) => {
     setIsSaving(true);
+    const request: UpdateGroupUserRequest = {
+      role: data.role,
+    };
     try {
-      const request: UpdateGroupUserRequest = {
-        role: data.role,
-      };
       const response = await adminApi.updateGroupUser(groupUserId, request);
+      apiLogger.general({
+        endpoint: 'updateGroupUser',
+        success: response.success,
+        params: { id: groupUserId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Relación actualizada exitosamente');
         setGroupUser(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.general({
+        endpoint: 'updateGroupUser',
+        success: false,
+        params: { id: groupUserId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar la relación');
     } finally {
       setIsSaving(false);
@@ -100,11 +127,24 @@ export default function GroupUserDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteGroupUser(groupUserId);
+      apiLogger.general({
+        endpoint: 'deleteGroupUser',
+        success: response.success,
+        params: { id: groupUserId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Relación eliminada correctamente');
         router.push('/admin/group-users');
       }
     } catch (err: any) {
+      apiLogger.general({
+        endpoint: 'deleteGroupUser',
+        success: false,
+        params: { id: groupUserId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar la relación');
     } finally {
       setIsDeleting(false);

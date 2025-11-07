@@ -18,6 +18,7 @@ import { ArrowLeft, User, DollarSign, Tag, Edit, Save, X } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateExpenseShareSchema = z.object({
   amount: z.number().min(0.01, 'El monto debe ser mayor a 0').optional(),
@@ -66,10 +67,23 @@ export default function ExpenseShareDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getExpenseShareById(shareId);
+      apiLogger.expenses({
+        endpoint: 'getExpenseShareById',
+        success: response.success,
+        params: { id: shareId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setShare(response.data);
       }
     } catch (err: any) {
+      apiLogger.expenses({
+        endpoint: 'getExpenseShareById',
+        success: false,
+        params: { id: shareId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar la participación');
     } finally {
       setLoading(false);
@@ -78,18 +92,31 @@ export default function ExpenseShareDetailPage() {
 
   const onSubmit = async (data: UpdateExpenseShareFormData) => {
     setIsSaving(true);
+    const request: UpdateExpenseShareRequest = {
+      amount: data.amount,
+      type: data.type,
+    };
     try {
-      const request: UpdateExpenseShareRequest = {
-        amount: data.amount,
-        type: data.type,
-      };
       const response = await adminApi.updateExpenseShare(shareId, request);
+      apiLogger.expenses({
+        endpoint: 'updateExpenseShare',
+        success: response.success,
+        params: { id: shareId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Participación actualizada exitosamente');
         setShare(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.expenses({
+        endpoint: 'updateExpenseShare',
+        success: false,
+        params: { id: shareId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar la participación');
     } finally {
       setIsSaving(false);
@@ -104,11 +131,24 @@ export default function ExpenseShareDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteExpenseShare(shareId);
+      apiLogger.expenses({
+        endpoint: 'deleteExpenseShare',
+        success: response.success,
+        params: { id: shareId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Participación eliminada correctamente');
         router.push('/admin/expense-shares');
       }
     } catch (err: any) {
+      apiLogger.expenses({
+        endpoint: 'deleteExpenseShare',
+        success: false,
+        params: { id: shareId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar la participación');
     } finally {
       setIsDeleting(false);

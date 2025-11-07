@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, MoreVertical, CheckSquare, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 const statusColors: Record<TaskStatus, string> = {
   TODO: 'bg-gray-500',
@@ -41,10 +43,21 @@ export default function AdminTasksPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllTasks({ page: 0, size: 50 });
-      if (response.success) {
-        setTasks(response.data.content);
-      }
+      apiLogger.tasks({
+        endpoint: 'getAllTasks',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setTasks(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.tasks({
+        endpoint: 'getAllTasks',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading tasks:', error);
     } finally {
       setLoading(false);

@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateConversationRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createConversationSchema = z.object({
   name: z.string().optional(),
@@ -35,17 +36,30 @@ export default function CreateConversationPage() {
 
   const onSubmit = async (data: CreateConversationFormData) => {
     setIsLoading(true);
+    const request: CreateConversationRequest = {
+      name: data.name,
+      userIds: Array.isArray(data.userIds) ? data.userIds : [data.userIds],
+    };
     try {
-      const request: CreateConversationRequest = {
-        name: data.name,
-        userIds: Array.isArray(data.userIds) ? data.userIds : [data.userIds],
-      };
       const response = await adminApi.createConversation(request);
+      apiLogger.conversations({
+        endpoint: 'createConversation',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Conversación creada exitosamente');
         router.push('/admin/conversations');
       }
     } catch (error: any) {
+      apiLogger.conversations({
+        endpoint: 'createConversation',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear la conversación');
     } finally {
       setIsLoading(false);

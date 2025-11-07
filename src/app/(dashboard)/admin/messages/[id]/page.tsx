@@ -18,6 +18,7 @@ import { ArrowLeft, Mail, Calendar, User, Bot, Edit, Save, X } from 'lucide-reac
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateMessageSchema = z.object({
   content: z.string().min(1, 'El contenido es requerido'),
@@ -64,12 +65,25 @@ export default function MessageDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getMessageById(messageId);
+      apiLogger.messages({
+        endpoint: 'getMessageById',
+        success: response.success,
+        params: { id: messageId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setMessage(response.data);
         // Note: We need conversationId for update, but MessageResponse doesn't include it
         // This would need to be passed or fetched separately
       }
     } catch (err: any) {
+      apiLogger.messages({
+        endpoint: 'getMessageById',
+        success: false,
+        params: { id: messageId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar el mensaje');
     } finally {
       setLoading(false);
@@ -78,17 +92,30 @@ export default function MessageDetailPage() {
 
   const onSubmit = async (data: UpdateMessageFormData) => {
     setIsSaving(true);
+    const request: UpdateMessageRequest = {
+      content: data.content,
+    };
     try {
-      const request: UpdateMessageRequest = {
-        content: data.content,
-      };
       const response = await adminApi.updateMessage(messageId, request);
+      apiLogger.messages({
+        endpoint: 'updateMessage',
+        success: response.success,
+        params: { id: messageId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Mensaje actualizado exitosamente');
         setMessage(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.messages({
+        endpoint: 'updateMessage',
+        success: false,
+        params: { id: messageId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar el mensaje');
     } finally {
       setIsSaving(false);
@@ -103,11 +130,24 @@ export default function MessageDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteMessage(messageId);
+      apiLogger.messages({
+        endpoint: 'deleteMessage',
+        success: response.success,
+        params: { id: messageId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Mensaje eliminado correctamente');
         router.push('/admin/messages');
       }
     } catch (err: any) {
+      apiLogger.messages({
+        endpoint: 'deleteMessage',
+        success: false,
+        params: { id: messageId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar el mensaje');
     } finally {
       setIsDeleting(false);

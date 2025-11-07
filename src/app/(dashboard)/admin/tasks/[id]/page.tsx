@@ -22,6 +22,8 @@ import { ArrowLeft, Edit, Save, X, CheckSquare, Calendar, User, Tag, DollarSign,
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 const updateTaskSchema = z.object({
   title: z.string().min(1, 'El título es requerido').optional(),
@@ -82,7 +84,6 @@ export default function TaskDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [users, setUsers] = useState<UserResponse[]>([]);
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
   const [groupMembers, setGroupMembers] = useState<UserResponse[]>([]);
   const [isExpenseSectionOpen, setIsExpenseSectionOpen] = useState(false);
@@ -116,7 +117,6 @@ export default function TaskDetailPage() {
   useEffect(() => {
     if (taskId) {
       loadTask();
-      loadUsers();
     }
   }, [taskId]);
 
@@ -154,26 +154,29 @@ export default function TaskDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getTaskById(taskId);
+      apiLogger.tasks({
+        endpoint: 'getTaskById',
+        success: response.success,
+        params: { id: taskId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setTask(response.data);
       }
     } catch (err: any) {
+      apiLogger.tasks({
+        endpoint: 'getTaskById',
+        success: false,
+        params: { id: taskId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar la tarea');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadUsers = async () => {
-    try {
-      const response = await adminApi.getAllUsers({ page: 0, size: 100 });
-      if (response.success) {
-        setUsers(response.data.content);
-      }
-    } catch (error) {
-      console.error('Error loading users:', error);
-    }
-  };
 
   const loadGroupData = async (groupId: string) => {
     try {
@@ -182,15 +185,36 @@ export default function TaskDetailPage() {
         expensesApi.getAll({ groupId, page: 0, size: 100 }),
       ]);
 
+      apiLogger.groups({
+        endpoint: 'getById (for task)',
+        success: groupRes.success,
+        params: { id: groupId },
+        data: groupRes.data,
+        error: groupRes.success ? null : groupRes,
+      });
+      apiLogger.expenses({
+        endpoint: 'getAll (for task)',
+        success: expensesRes.success,
+        params: { groupId, page: 0, size: 100 },
+        data: expensesRes.data,
+        error: expensesRes.success ? null : expensesRes,
+      });
+
       if (groupRes.success) {
         const members = groupRes.data.members.map(m => m.user);
         setGroupMembers(members);
       }
 
       if (expensesRes.success) {
-        setExpenses(expensesRes.data.content);
+        setExpenses(extractDataFromResponse(expensesRes));
       }
     } catch (error) {
+      apiLogger.general({
+        endpoint: 'loadGroupData',
+        success: false,
+        params: { groupId },
+        error: error,
+      });
       console.error('Error loading group data:', error);
     }
   };
@@ -212,35 +236,42 @@ export default function TaskDetailPage() {
 
   const onSubmit = async (data: UpdateTaskFormData) => {
     setIsSaving(true);
+    const request: UpdateTaskRequest = {
+      title: data.title,
+      description: data.description,
+      status: data.status,
+      priority: data.priority,
+      assignedToId: data.assignedToId,
+      startDate: data.startDate,
+      dueDate: data.dueDate,
+      position: data.position,
+    };
+
+    if (data.expenseMode === 'reference' && data.expenseId) {
+      request.expenseId = data.expenseId;
+    } else if (data.expenseMode === 'create' || data.expenseMode === 'store') {
+      request.createFutureExpense = data.expenseMode === 'create';
+      request.futureExpenseAmount = data.futureExpenseAmount;
+      request.futureExpenseCurrency = data.futureExpenseCurrency || 'USD';
+      request.futureExpensePaidById = data.futureExpensePaidById;
+      request.futureExpenseShares = data.futureExpenseShares;
+    } else if (data.expenseMode === 'none') {
+      request.expenseId = undefined;
+      request.futureExpenseAmount = undefined;
+      request.futureExpenseCurrency = undefined;
+      request.futureExpensePaidById = undefined;
+      request.futureExpenseShares = undefined;
+    }
+
     try {
-      const request: UpdateTaskRequest = {
-        title: data.title,
-        description: data.description,
-        status: data.status,
-        priority: data.priority,
-        assignedToId: data.assignedToId,
-        startDate: data.startDate,
-        dueDate: data.dueDate,
-        position: data.position,
-      };
-
-      if (data.expenseMode === 'reference' && data.expenseId) {
-        request.expenseId = data.expenseId;
-      } else if (data.expenseMode === 'create' || data.expenseMode === 'store') {
-        request.createFutureExpense = data.expenseMode === 'create';
-        request.futureExpenseAmount = data.futureExpenseAmount;
-        request.futureExpenseCurrency = data.futureExpenseCurrency || 'USD';
-        request.futureExpensePaidById = data.futureExpensePaidById;
-        request.futureExpenseShares = data.futureExpenseShares;
-      } else if (data.expenseMode === 'none') {
-        request.expenseId = undefined;
-        request.futureExpenseAmount = undefined;
-        request.futureExpenseCurrency = undefined;
-        request.futureExpensePaidById = undefined;
-        request.futureExpenseShares = undefined;
-      }
-
       const response = await adminApi.updateTask(taskId, request);
+      apiLogger.tasks({
+        endpoint: 'updateTask',
+        success: response.success,
+        params: { id: taskId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         const wasDone = task?.status === 'DONE';
         const isNowDone = data.status === 'DONE';
@@ -253,6 +284,12 @@ export default function TaskDetailPage() {
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.tasks({
+        endpoint: 'updateTask',
+        success: false,
+        params: { id: taskId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar la tarea');
     } finally {
       setIsSaving(false);
@@ -267,11 +304,24 @@ export default function TaskDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteTask(taskId);
+      apiLogger.tasks({
+        endpoint: 'deleteTask',
+        success: response.success,
+        params: { id: taskId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Tarea eliminada correctamente');
         router.push('/admin/tasks');
       }
     } catch (err: any) {
+      apiLogger.tasks({
+        endpoint: 'deleteTask',
+        success: false,
+        params: { id: taskId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar la tarea');
     } finally {
       setIsDeleting(false);
@@ -381,12 +431,15 @@ export default function TaskDetailPage() {
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
                     <option value="">Sin asignar</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name} {user.lastName} ({user.email})
+                    {groupMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name} {member.lastName} ({member.email})
                       </option>
                     ))}
                   </select>
+                  {groupMembers.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Cargando miembros del grupo...</p>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">

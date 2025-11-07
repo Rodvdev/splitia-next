@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, MoreVertical, Users, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AdminGroupsPage() {
   const [groups, setGroups] = useState<GroupResponse[]>([]);
@@ -26,10 +28,21 @@ export default function AdminGroupsPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllGroups({ page: 0, size: 50 });
-      if (response.success) {
-        setGroups(response.data.content);
-      }
+      apiLogger.groups({
+        endpoint: 'getAllGroups',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setGroups(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.groups({
+        endpoint: 'getAllGroups',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading groups:', error);
     } finally {
       setLoading(false);

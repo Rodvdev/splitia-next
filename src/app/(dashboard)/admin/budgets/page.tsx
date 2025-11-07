@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, MoreVertical, Wallet, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AdminBudgetsPage() {
   const [budgets, setBudgets] = useState<BudgetResponse[]>([]);
@@ -26,10 +28,21 @@ export default function AdminBudgetsPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllBudgets({ page: 0, size: 50 });
-      if (response.success) {
-        setBudgets(response.data.content);
-      }
+      apiLogger.budgets({
+        endpoint: 'getAllBudgets',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setBudgets(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.budgets({
+        endpoint: 'getAllBudgets',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading budgets:', error);
     } finally {
       setLoading(false);

@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, MoreVertical, CreditCard, Check, X } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AdminPlansPage() {
   const [plans, setPlans] = useState<PlanResponse[]>([]);
@@ -26,10 +28,21 @@ export default function AdminPlansPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllPlans({ page: 0, size: 50 });
-      if (response.success) {
-        setPlans(response.data.content);
-      }
+      apiLogger.plans({
+        endpoint: 'getAllPlans',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setPlans(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.plans({
+        endpoint: 'getAllPlans',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading plans:', error);
     } finally {
       setLoading(false);

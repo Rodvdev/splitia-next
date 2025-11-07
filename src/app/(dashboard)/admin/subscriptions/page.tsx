@@ -9,9 +9,11 @@ import { adminApi } from '@/lib/api/admin';
 import { SubscriptionResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search, MoreVertical, CreditCard, Plus } from 'lucide-react';
+import { Search, MoreVertical, CreditCard, Plus, Users } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AdminSubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState<SubscriptionResponse[]>([]);
@@ -26,10 +28,21 @@ export default function AdminSubscriptionsPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllSubscriptions({ page: 0, size: 50 });
-      if (response.success) {
-        setSubscriptions(response.data.content);
-      }
+      apiLogger.subscriptions({
+        endpoint: 'getAllSubscriptions',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setSubscriptions(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.subscriptions({
+        endpoint: 'getAllSubscriptions',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading subscriptions:', error);
     } finally {
       setLoading(false);
@@ -122,6 +135,7 @@ export default function AdminSubscriptionsPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Usuario</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Plan</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Estado</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Precio/Mes</th>
@@ -133,6 +147,35 @@ export default function AdminSubscriptionsPage() {
                   <tbody>
                     {filteredSubscriptions.map((subscription) => (
                       <tr key={subscription.id} className="border-b hover:bg-muted/50 transition-colors">
+                        <td className="px-4 py-3">
+                          {subscription.user ? (
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                <span className="text-sm font-semibold">
+                                  {subscription.user.name[0]}{subscription.user.lastName[0]}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="font-medium">{subscription.user.name} {subscription.user.lastName}</p>
+                                <p className="text-xs text-muted-foreground">{subscription.user.email}</p>
+                              </div>
+                            </div>
+                          ) : subscription.userEmail || subscription.userName ? (
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Users className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{subscription.userName || 'Usuario'}</p>
+                                {subscription.userEmail && (
+                                  <p className="text-xs text-muted-foreground">{subscription.userEmail}</p>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">N/A</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">

@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateUserRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createUserSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -41,23 +42,36 @@ export default function CreateUserPage() {
 
   const onSubmit = async (data: CreateUserFormData) => {
     setIsLoading(true);
+    const request: CreateUserRequest = {
+      name: data.name,
+      lastName: data.lastName,
+      email: data.email,
+      password: data.password,
+      phoneNumber: data.phoneNumber,
+      role: data.role,
+      currency: data.currency,
+      language: data.language,
+    };
     try {
-      const request: CreateUserRequest = {
-        name: data.name,
-        lastName: data.lastName,
-        email: data.email,
-        password: data.password,
-        phoneNumber: data.phoneNumber,
-        role: data.role,
-        currency: data.currency,
-        language: data.language,
-      };
       const response = await adminApi.createUser(request);
+      apiLogger.users({
+        endpoint: 'createUser',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Usuario creado exitosamente');
         router.push('/admin/users');
       }
     } catch (error: any) {
+      apiLogger.users({
+        endpoint: 'createUser',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear el usuario');
     } finally {
       setIsLoading(false);

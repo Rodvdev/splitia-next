@@ -18,6 +18,7 @@ import { ArrowLeft, Mail, Phone, Calendar, Globe, DollarSign, Edit, Save, X } fr
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateUserSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
@@ -76,10 +77,23 @@ export default function UserDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getUserById(userId);
+      apiLogger.users({
+        endpoint: 'getUserById',
+        success: response.success,
+        params: { id: userId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setUser(response.data);
       }
     } catch (err: any) {
+      apiLogger.users({
+        endpoint: 'getUserById',
+        success: false,
+        params: { id: userId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar el usuario');
     } finally {
       setLoading(false);
@@ -88,23 +102,36 @@ export default function UserDetailPage() {
 
   const onSubmit = async (data: UpdateUserFormData) => {
     setIsSaving(true);
+    const request: UpdateUserRequest = {
+      name: data.name,
+      lastName: data.lastName,
+      email: data.email,
+      phoneNumber: data.phoneNumber,
+      role: data.role,
+      currency: data.currency,
+      language: data.language,
+    };
     try {
-      const request: UpdateUserRequest = {
-        name: data.name,
-        lastName: data.lastName,
-        email: data.email,
-        phoneNumber: data.phoneNumber,
-        role: data.role,
-        currency: data.currency,
-        language: data.language,
-      };
       const response = await adminApi.updateUser(userId, request);
+      apiLogger.users({
+        endpoint: 'updateUser',
+        success: response.success,
+        params: { id: userId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Usuario actualizado exitosamente');
         setUser(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.users({
+        endpoint: 'updateUser',
+        success: false,
+        params: { id: userId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar el usuario');
     } finally {
       setIsSaving(false);

@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, MoreVertical, HelpCircle, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AdminSupportTicketsPage() {
   const [tickets, setTickets] = useState<SupportTicketResponse[]>([]);
@@ -26,10 +28,21 @@ export default function AdminSupportTicketsPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllSupportTickets({ page: 0, size: 50 });
-      if (response.success) {
-        setTickets(response.data.content);
-      }
+      apiLogger.support({
+        endpoint: 'getAllSupportTickets',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setTickets(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.support({
+        endpoint: 'getAllSupportTickets',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading support tickets:', error);
     } finally {
       setLoading(false);

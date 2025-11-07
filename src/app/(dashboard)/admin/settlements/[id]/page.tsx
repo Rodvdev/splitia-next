@@ -18,6 +18,7 @@ import { ArrowLeft, FileText, Calendar, DollarSign, Tag, User, Users, Edit, Save
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateSettlementSchema = z.object({
   amount: z.number().min(0.01, 'El monto debe ser mayor a 0').optional(),
@@ -68,10 +69,23 @@ export default function SettlementDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getSettlementById(settlementId);
+      apiLogger.settlements({
+        endpoint: 'getSettlementById',
+        success: response.success,
+        params: { id: settlementId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setSettlement(response.data);
       }
     } catch (err: any) {
+      apiLogger.settlements({
+        endpoint: 'getSettlementById',
+        success: false,
+        params: { id: settlementId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar la liquidación');
     } finally {
       setLoading(false);
@@ -80,19 +94,32 @@ export default function SettlementDetailPage() {
 
   const onSubmit = async (data: UpdateSettlementFormData) => {
     setIsSaving(true);
+    const request: UpdateSettlementRequest = {
+      amount: data.amount,
+      description: data.description,
+      status: data.status,
+    };
     try {
-      const request: UpdateSettlementRequest = {
-        amount: data.amount,
-        description: data.description,
-        status: data.status,
-      };
       const response = await adminApi.updateSettlement(settlementId, request);
+      apiLogger.settlements({
+        endpoint: 'updateSettlement',
+        success: response.success,
+        params: { id: settlementId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Liquidación actualizada exitosamente');
         setSettlement(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.settlements({
+        endpoint: 'updateSettlement',
+        success: false,
+        params: { id: settlementId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar la liquidación');
     } finally {
       setIsSaving(false);
@@ -107,11 +134,24 @@ export default function SettlementDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteSettlement(settlementId);
+      apiLogger.settlements({
+        endpoint: 'deleteSettlement',
+        success: response.success,
+        params: { id: settlementId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Liquidación eliminada correctamente');
         router.push('/admin/settlements');
       }
     } catch (err: any) {
+      apiLogger.settlements({
+        endpoint: 'deleteSettlement',
+        success: false,
+        params: { id: settlementId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar la liquidación');
     } finally {
       setIsDeleting(false);

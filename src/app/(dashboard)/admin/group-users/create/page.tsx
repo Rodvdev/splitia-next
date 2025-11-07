@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateGroupUserRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createGroupUserSchema = z.object({
   groupId: z.string().min(1, 'El ID del grupo es requerido'),
@@ -39,18 +40,31 @@ export default function CreateGroupUserPage() {
 
   const onSubmit = async (data: CreateGroupUserFormData) => {
     setIsLoading(true);
+    const request: CreateGroupUserRequest = {
+      groupId: data.groupId,
+      userId: data.userId,
+      role: data.role,
+    };
     try {
-      const request: CreateGroupUserRequest = {
-        groupId: data.groupId,
-        userId: data.userId,
-        role: data.role,
-      };
       const response = await adminApi.createGroupUser(request);
+      apiLogger.general({
+        endpoint: 'createGroupUser',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Miembro creado exitosamente');
         router.push('/admin/group-users');
       }
     } catch (error: any) {
+      apiLogger.general({
+        endpoint: 'createGroupUser',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear el miembro');
     } finally {
       setIsLoading(false);

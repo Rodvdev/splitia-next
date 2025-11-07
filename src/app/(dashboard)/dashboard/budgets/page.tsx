@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import { Plus, Wallet, Calendar, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -32,10 +34,21 @@ export default function BudgetsPage() {
       setLoading(true);
       setError(null);
       const response = await budgetsApi.getAll();
-      if (response.success) {
-        setBudgets(response.data.content || []);
-      }
+      apiLogger.budgets({
+        endpoint: 'getAll',
+        success: response.success,
+        params: {},
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setBudgets(extractDataFromResponse(response));
     } catch (err) {
+      apiLogger.budgets({
+        endpoint: 'getAll',
+        success: false,
+        params: {},
+        error: err,
+      });
       const errorMessage = err instanceof Error 
         ? err.message 
         : 'Error al cargar los presupuestos';
@@ -54,11 +67,24 @@ export default function BudgetsPage() {
     try {
       setDeletingId(id);
       const response = await budgetsApi.delete(id);
+      apiLogger.budgets({
+        endpoint: 'delete',
+        success: response.success,
+        params: { id },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Presupuesto eliminado correctamente');
         loadBudgets();
       }
     } catch (err) {
+      apiLogger.budgets({
+        endpoint: 'delete',
+        success: false,
+        params: { id },
+        error: err,
+      });
       const errorMessage = err instanceof Error 
         ? err.message 
         : 'Error al eliminar el presupuesto';

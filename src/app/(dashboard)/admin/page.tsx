@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { UserResponse, GroupResponse, SubscriptionResponse, SupportTicketResponse } from '@/types';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO, subWeeks, startOfWeek, endOfWeek, eachWeekOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 interface ChartDataPoint {
   date: string;
@@ -45,7 +47,8 @@ export default function AdminDashboardPage() {
       const currentMonthStart = startOfMonth(now);
       const previousMonthStart = startOfMonth(subMonths(now, 1));
 
-      // Cargar todos los datos necesarios
+      // Cargar todos los datos necesarios con manejo individual de errores
+      // Usar un tamaño más razonable para evitar problemas de rendimiento
       const [
         usersRes,
         previousUsersRes,
@@ -55,67 +58,203 @@ export default function AdminDashboardPage() {
         previousSubscriptionsRes,
         ticketsRes,
         previousTicketsRes,
-      ] = await Promise.all([
-        adminApi.getAllUsers({ page: 0, size: 10000 }),
-        adminApi.getAllUsers({ page: 0, size: 10000 }),
-        adminApi.getAllGroups({ page: 0, size: 10000 }),
-        adminApi.getAllGroups({ page: 0, size: 10000 }),
-        adminApi.getAllSubscriptions({ page: 0, size: 10000 }),
-        adminApi.getAllSubscriptions({ page: 0, size: 10000 }),
-        adminApi.getAllSupportTickets({ page: 0, size: 10000 }),
-        adminApi.getAllSupportTickets({ page: 0, size: 10000 }),
+      ] = await Promise.allSettled([
+        adminApi.getAllUsers({ page: 0, size: 1000 }).catch((err) => {
+          console.error('Error loading users:', err);
+          return { success: false, data: { content: [], totalPages: 0, totalElements: 0, number: 0, size: 0, first: true, last: true }, timestamp: new Date().toISOString() };
+        }),
+        adminApi.getAllUsers({ page: 0, size: 1000 }).catch((err) => {
+          console.error('Error loading previous users:', err);
+          return { success: false, data: { content: [], totalPages: 0, totalElements: 0, number: 0, size: 0, first: true, last: true }, timestamp: new Date().toISOString() };
+        }),
+        adminApi.getAllGroups({ page: 0, size: 1000 }).catch((err) => {
+          console.error('Error loading groups:', err);
+          return { success: false, data: { content: [], totalPages: 0, totalElements: 0, number: 0, size: 0, first: true, last: true }, timestamp: new Date().toISOString() };
+        }),
+        adminApi.getAllGroups({ page: 0, size: 1000 }).catch((err) => {
+          console.error('Error loading previous groups:', err);
+          return { success: false, data: { content: [], totalPages: 0, totalElements: 0, number: 0, size: 0, first: true, last: true }, timestamp: new Date().toISOString() };
+        }),
+        adminApi.getAllSubscriptions({ page: 0, size: 1000 }).catch((err) => {
+          console.error('Error loading subscriptions:', err);
+          return { success: false, data: { content: [], totalPages: 0, totalElements: 0, number: 0, size: 0, first: true, last: true }, timestamp: new Date().toISOString() };
+        }),
+        adminApi.getAllSubscriptions({ page: 0, size: 1000 }).catch((err) => {
+          console.error('Error loading previous subscriptions:', err);
+          return { success: false, data: { content: [], totalPages: 0, totalElements: 0, number: 0, size: 0, first: true, last: true }, timestamp: new Date().toISOString() };
+        }),
+        adminApi.getAllSupportTickets({ page: 0, size: 1000 }).catch((err) => {
+          console.error('Error loading tickets:', err);
+          return { success: false, data: { content: [], totalPages: 0, totalElements: 0, number: 0, size: 0, first: true, last: true }, timestamp: new Date().toISOString() };
+        }),
+        adminApi.getAllSupportTickets({ page: 0, size: 1000 }).catch((err) => {
+          console.error('Error loading previous tickets:', err);
+          return { success: false, data: { content: [], totalPages: 0, totalElements: 0, number: 0, size: 0, first: true, last: true }, timestamp: new Date().toISOString() };
+        }),
       ]);
 
-      if (!usersRes.success || !groupsRes.success || !subscriptionsRes.success || !ticketsRes.success) {
-        throw new Error('Error al cargar datos del dashboard');
+      // Extraer resultados de Promise.allSettled con validación segura
+      const emptyPage = { content: [], totalPages: 0, totalElements: 0, number: 0, size: 0, first: true, last: true };
+      const fallbackResponse = { success: false, data: emptyPage, timestamp: new Date().toISOString() };
+      const usersResValue = usersRes.status === 'fulfilled' && usersRes.value?.success 
+        ? usersRes.value 
+        : fallbackResponse;
+      const previousUsersResValue = previousUsersRes.status === 'fulfilled' && previousUsersRes.value?.success
+        ? previousUsersRes.value 
+        : fallbackResponse;
+      const groupsResValue = groupsRes.status === 'fulfilled' && groupsRes.value?.success
+        ? groupsRes.value 
+        : fallbackResponse;
+      const previousGroupsResValue = previousGroupsRes.status === 'fulfilled' && previousGroupsRes.value?.success
+        ? previousGroupsRes.value 
+        : fallbackResponse;
+      const subscriptionsResValue = subscriptionsRes.status === 'fulfilled' && subscriptionsRes.value?.success
+        ? subscriptionsRes.value 
+        : fallbackResponse;
+      const previousSubscriptionsResValue = previousSubscriptionsRes.status === 'fulfilled' && previousSubscriptionsRes.value?.success
+        ? previousSubscriptionsRes.value 
+        : fallbackResponse;
+      const ticketsResValue = ticketsRes.status === 'fulfilled' && ticketsRes.value?.success
+        ? ticketsRes.value 
+        : fallbackResponse;
+      const previousTicketsResValue = previousTicketsRes.status === 'fulfilled' && previousTicketsRes.value?.success
+        ? previousTicketsRes.value 
+        : fallbackResponse;
+
+      // Log todas las respuestas de la API para debugging
+      apiLogger.users({
+        endpoint: 'getAllUsers (current)',
+        success: usersResValue.success,
+        params: { page: 0, size: 1000 },
+        data: usersResValue.data,
+        error: usersRes.status === 'rejected' ? usersRes.reason : (usersResValue.success ? null : usersResValue),
+      });
+      apiLogger.users({
+        endpoint: 'getAllUsers (previous)',
+        success: previousUsersResValue.success,
+        params: { page: 0, size: 1000 },
+        data: previousUsersResValue.data,
+        error: previousUsersRes.status === 'rejected' ? previousUsersRes.reason : (previousUsersResValue.success ? null : previousUsersResValue),
+      });
+      apiLogger.groups({
+        endpoint: 'getAllGroups (current)',
+        success: groupsResValue.success,
+        params: { page: 0, size: 1000 },
+        data: groupsResValue.data,
+        error: groupsRes.status === 'rejected' ? groupsRes.reason : (groupsResValue.success ? null : groupsResValue),
+      });
+      apiLogger.groups({
+        endpoint: 'getAllGroups (previous)',
+        success: previousGroupsResValue.success,
+        params: { page: 0, size: 1000 },
+        data: previousGroupsResValue.data,
+        error: previousGroupsRes.status === 'rejected' ? previousGroupsRes.reason : (previousGroupsResValue.success ? null : previousGroupsResValue),
+      });
+      apiLogger.subscriptions({
+        endpoint: 'getAllSubscriptions (current)',
+        success: subscriptionsResValue.success,
+        params: { page: 0, size: 1000 },
+        data: subscriptionsResValue.data,
+        error: subscriptionsRes.status === 'rejected' ? subscriptionsRes.reason : (subscriptionsResValue.success ? null : subscriptionsResValue),
+      });
+      apiLogger.subscriptions({
+        endpoint: 'getAllSubscriptions (previous)',
+        success: previousSubscriptionsResValue.success,
+        params: { page: 0, size: 1000 },
+        data: previousSubscriptionsResValue.data,
+        error: previousSubscriptionsRes.status === 'rejected' ? previousSubscriptionsRes.reason : (previousSubscriptionsResValue.success ? null : previousSubscriptionsResValue),
+      });
+      apiLogger.support({
+        endpoint: 'getAllSupportTickets (current)',
+        success: ticketsResValue.success,
+        params: { page: 0, size: 1000 },
+        data: ticketsResValue.data,
+        error: ticketsRes.status === 'rejected' ? ticketsRes.reason : (ticketsResValue.success ? null : ticketsResValue),
+      });
+      apiLogger.support({
+        endpoint: 'getAllSupportTickets (previous)',
+        success: previousTicketsResValue.success,
+        params: { page: 0, size: 1000 },
+        data: previousTicketsResValue.data,
+        error: previousTicketsRes.status === 'rejected' ? previousTicketsRes.reason : (previousTicketsResValue.success ? null : previousTicketsResValue),
+      });
+
+      // Verificar que al menos los datos críticos se cargaron
+      if (!usersResValue.success || !groupsResValue.success) {
+        console.error('Error al cargar datos críticos:', {
+          users: usersResValue.success,
+          groups: groupsResValue.success,
+          usersError: usersRes.status === 'rejected' ? usersRes.reason : null,
+          groupsError: groupsRes.status === 'rejected' ? groupsRes.reason : null,
+        });
+        throw new Error('Error al cargar datos críticos del dashboard');
       }
 
-      // Calcular total de usuarios
-      const currentUsers = usersRes.data.content.filter((user: UserResponse) => {
-        const userDate = parseISO(user.createdAt);
-        return userDate <= now;
-      });
-      const previousUsers = previousUsersRes.data.content.filter((user: UserResponse) => {
+      // Mostrar advertencias para datos opcionales que fallaron
+      if (!subscriptionsResValue.success) {
+        console.warn('No se pudieron cargar las suscripciones');
+      }
+      if (!ticketsResValue.success) {
+        console.warn('No se pudieron cargar los tickets de soporte');
+      }
+
+      // Calcular total de usuarios contando elementos en las listas
+      const usersData = extractDataFromResponse(usersResValue) as UserResponse[];
+      const previousUsersData = extractDataFromResponse(previousUsersResValue) as UserResponse[];
+      
+      // Contar elementos en las listas (no usar number que es el número de página)
+      const totalUsersCount = usersData.length;
+      // Para el mes anterior, contar usuarios creados hasta el inicio del mes anterior
+      const previousUsersCount = previousUsersData.filter((user: UserResponse) => {
+        if (!user?.createdAt) return false;
         const userDate = parseISO(user.createdAt);
         return userDate <= previousMonthStart;
-      });
-      setTotalUsers(currentUsers.length);
-      setPreviousMonthUsers(previousUsers.length);
+      }).length;
+      
+      setTotalUsers(totalUsersCount);
+      setPreviousMonthUsers(previousUsersCount);
 
-      // Calcular grupos activos
-      const currentGroups = groupsRes.data.content.filter((group: GroupResponse) => {
-        const groupDate = parseISO(group.createdAt);
-        return groupDate <= now;
-      });
-      const previousGroups = previousGroupsRes.data.content.filter((group: GroupResponse) => {
+      // Calcular grupos activos contando elementos en las listas
+      const groupsData = extractDataFromResponse(groupsResValue) as GroupResponse[];
+      const previousGroupsData = extractDataFromResponse(previousGroupsResValue) as GroupResponse[];
+      
+      // Contar elementos en las listas (no usar number que es el número de página)
+      const totalGroupsCount = groupsData.length;
+      // Para el mes anterior, contar grupos creados hasta el inicio del mes anterior
+      const previousGroupsCount = previousGroupsData.filter((group: GroupResponse) => {
+        if (!group?.createdAt) return false;
         const groupDate = parseISO(group.createdAt);
         return groupDate <= previousMonthStart;
-      });
-      setActiveGroups(currentGroups.length);
-      setPreviousMonthGroups(previousGroups.length);
+      }).length;
+      
+      setActiveGroups(totalGroupsCount);
+      setPreviousMonthGroups(previousGroupsCount);
 
       // Calcular ingresos mensuales (MRR) - todas las suscripciones activas
-      const currentActiveSubscriptions = subscriptionsRes.data.content.filter((sub: SubscriptionResponse) => 
-        sub.status === 'ACTIVE'
-      );
-      const previousActiveSubscriptions = previousSubscriptionsRes.data.content.filter((sub: SubscriptionResponse) => 
-        sub.status === 'ACTIVE'
-      );
+      const subscriptionsData = extractDataFromResponse(subscriptionsResValue) as SubscriptionResponse[];
+      const previousSubscriptionsData = extractDataFromResponse(previousSubscriptionsResValue) as SubscriptionResponse[];
+      
+      const currentActiveSubscriptions = subscriptionsData.filter((sub: SubscriptionResponse) => sub?.status === 'ACTIVE');
+      const previousActiveSubscriptions = previousSubscriptionsData.filter((sub: SubscriptionResponse) => sub?.status === 'ACTIVE');
 
       const currentMRR = currentActiveSubscriptions.reduce((sum: number, sub: SubscriptionResponse) => 
-        sum + sub.pricePerMonth, 0);
+        sum + (sub.pricePerMonth || 0), 0);
       const previousMRR = previousActiveSubscriptions.reduce((sum: number, sub: SubscriptionResponse) => 
-        sum + sub.pricePerMonth, 0);
+        sum + (sub.pricePerMonth || 0), 0);
       setMonthlyRevenue(currentMRR);
       setPreviousMonthRevenue(previousMRR);
 
-      // Calcular tickets abiertos
-      const openTicketsCurrent = ticketsRes.data.content.filter((ticket: SupportTicketResponse) => 
-        ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS' || ticket.status === 'PENDING_CUSTOMER'
+      // Calcular tickets abiertos - filtrar por estado ya que necesitamos solo los abiertos
+      const ticketsData = extractDataFromResponse(ticketsResValue) as SupportTicketResponse[];
+      const previousTicketsData = extractDataFromResponse(previousTicketsResValue) as SupportTicketResponse[];
+      
+      const openTicketsCurrent = ticketsData.filter((ticket: SupportTicketResponse) => 
+        ticket?.status === 'OPEN' || ticket?.status === 'IN_PROGRESS' || ticket?.status === 'PENDING_CUSTOMER'
       );
-      const openTicketsPrevious = previousTicketsRes.data.content.filter((ticket: SupportTicketResponse) => 
-        ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS' || ticket.status === 'PENDING_CUSTOMER'
+      const openTicketsPrevious = previousTicketsData.filter((ticket: SupportTicketResponse) => 
+        ticket?.status === 'OPEN' || ticket?.status === 'IN_PROGRESS' || ticket?.status === 'PENDING_CUSTOMER'
       );
+      // Usar el conteo de elementos filtrados para tickets abiertos
       setOpenTickets(openTicketsCurrent.length);
       setPreviousMonthTickets(openTicketsPrevious.length);
 
@@ -129,22 +268,24 @@ export default function AdminDashboardPage() {
       const revenueData: ChartDataPoint[] = weeks.map((weekStart, index) => {
         const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
         // Suscripciones activas al final de esa semana
-        const weekSubscriptions = subscriptionsRes.data.content.filter((sub: SubscriptionResponse) => {
+        const weekSubscriptions = subscriptionsData.filter((sub: SubscriptionResponse) => {
+          if (!sub?.createdAt) return false;
           const subDate = parseISO(sub.createdAt);
           return subDate <= weekEnd && sub.status === 'ACTIVE';
         });
         const weekAmount = weekSubscriptions.reduce((sum: number, sub: SubscriptionResponse) => 
-          sum + sub.pricePerMonth, 0);
+          sum + (sub.pricePerMonth || 0), 0);
 
         // Obtener datos de la semana anterior para comparación
         const previousWeekStart = subWeeks(weekStart, 1);
         const previousWeekEnd = endOfWeek(previousWeekStart, { weekStartsOn: 1 });
-        const previousWeekSubscriptions = subscriptionsRes.data.content.filter((sub: SubscriptionResponse) => {
+        const previousWeekSubscriptions = subscriptionsData.filter((sub: SubscriptionResponse) => {
+          if (!sub?.createdAt) return false;
           const subDate = parseISO(sub.createdAt);
           return subDate <= previousWeekEnd && sub.status === 'ACTIVE';
         });
         const previousWeekAmount = previousWeekSubscriptions.reduce((sum: number, sub: SubscriptionResponse) => 
-          sum + sub.pricePerMonth, 0);
+          sum + (sub.pricePerMonth || 0), 0);
 
         return {
           date: `Sem ${index + 1}`,
@@ -155,9 +296,9 @@ export default function AdminDashboardPage() {
       setRevenueChartData(revenueData);
 
       // Usuarios recientes (últimos 3)
-      const sortedUsers = [...usersRes.data.content]
+      const sortedUsers = [...usersData]
         .sort((a: UserResponse, b: UserResponse) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         )
         .slice(0, 3);
       setRecentUsers(sortedUsers);

@@ -18,6 +18,8 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { toast } from 'sonner';
 import { ExpenseResponse, GroupResponse, BudgetResponse, SettlementResponse } from '@/types';
 import { es } from 'date-fns/locale';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 interface ChartDataPoint {
   date: string;
@@ -69,16 +71,60 @@ export default function DashboardPage() {
         settlementsApi.getAll(),
       ]);
 
+      // Log all API responses
+      apiLogger.expenses({
+        endpoint: 'getAll (current month)',
+        success: currentExpensesRes.success,
+        params: { page: 0, size: 1000 },
+        data: currentExpensesRes.data,
+        error: currentExpensesRes.success ? null : currentExpensesRes,
+      });
+      apiLogger.expenses({
+        endpoint: 'getAll (previous month)',
+        success: previousExpensesRes.success,
+        params: { page: 0, size: 1000 },
+        data: previousExpensesRes.data,
+        error: previousExpensesRes.success ? null : previousExpensesRes,
+      });
+      apiLogger.groups({
+        endpoint: 'getAll',
+        success: groupsRes.success,
+        params: { page: 0, size: 100 },
+        data: groupsRes.data,
+        error: groupsRes.success ? null : groupsRes,
+      });
+      apiLogger.budgets({
+        endpoint: 'getAll',
+        success: budgetsRes.success,
+        params: {},
+        data: budgetsRes.data,
+        error: budgetsRes.success ? null : budgetsRes,
+      });
+      apiLogger.settlements({
+        endpoint: 'getAll',
+        success: settlementsRes.success,
+        params: {},
+        data: settlementsRes.data,
+        error: settlementsRes.success ? null : settlementsRes,
+      });
+
       if (!currentExpensesRes.success || !groupsRes.success || !budgetsRes.success) {
         throw new Error('Error al cargar datos del dashboard');
       }
 
-      const currentExpenses = currentExpensesRes.data.content.filter((exp: ExpenseResponse) => {
+      // Validar que los datos existan antes de procesarlos
+      const currentExpensesData = extractDataFromResponse(currentExpensesRes);
+      const previousExpensesData = extractDataFromResponse(previousExpensesRes);
+      const groupsData = extractDataFromResponse(groupsRes);
+      const budgetsData = extractDataFromResponse(budgetsRes);
+      const settlementsData = extractDataFromResponse(settlementsRes);
+
+      const currentExpenses = currentExpensesData.filter((exp: ExpenseResponse) => {
         const expDate = parseISO(exp.date);
         return expDate >= currentMonthStart && expDate <= currentMonthEnd;
       });
 
-      const previousExpenses = previousExpensesRes.data.content.filter((exp: ExpenseResponse) => {
+      const previousExpenses = previousExpensesData.filter((exp: ExpenseResponse) => {
         const expDate = parseISO(exp.date);
         return expDate >= previousMonthStart && expDate <= previousMonthEnd;
       });
@@ -89,28 +135,30 @@ export default function DashboardPage() {
       setTotalExpenses(currentTotal);
       setPreviousMonthExpenses(previousTotal);
 
-      // Calcular grupos activos
-      setActiveGroups(groupsRes.data.content.length);
+      // Calcular grupos activos contando elementos en las listas
+      // Contar elementos en las listas (no usar number que es el número de página)
+      const totalGroupsCount = groupsData.length;
+      setActiveGroups(totalGroupsCount);
 
       // Calcular presupuesto disponible
-      const currentBudgets = budgetsRes.data.content.filter((budget: BudgetResponse) => 
+      const currentBudgets = budgetsData.filter((budget: BudgetResponse) => 
         budget.month === now.getMonth() + 1 && budget.year === now.getFullYear()
       );
-      const totalBudget = currentBudgets.reduce((sum: number, budget: BudgetResponse) => sum + budget.amount, 0);
+      const totalBudget = currentBudgets.reduce((sum: number, budget: BudgetResponse) => sum + (budget.amount || 0), 0);
       setBudgetAvailable(totalBudget - currentTotal);
 
       // Calcular balance (de settlements)
-      if (settlementsRes.success && user?.id) {
-        const userSettlements = settlementsRes.data.content.filter((settlement: SettlementResponse) => {
+      if (settlementsRes.success && user?.id && settlementsData.length > 0) {
+        const userSettlements = settlementsData.filter((settlement: SettlementResponse) => {
           // Filtrar settlements donde el usuario debe recibir dinero (RECEIPT) o pagar (PAYMENT)
-          const isReceipt = settlement.type === 'RECEIPT' && settlement.settledWithUser.id === user.id;
-          const isPayment = settlement.type === 'PAYMENT' && settlement.initiatedBy.id === user.id;
+          const isReceipt = settlement.type === 'RECEIPT' && settlement.settledWithUser?.id === user.id;
+          const isPayment = settlement.type === 'PAYMENT' && settlement.initiatedBy?.id === user.id;
           return isReceipt || isPayment;
         });
         const totalBalance = userSettlements.reduce((sum: number, settlement: SettlementResponse) => {
           // Si es RECEIPT, el usuario recibe dinero (positivo)
           // Si es PAYMENT, el usuario paga dinero (negativo)
-          const amount = settlement.type === 'RECEIPT' ? settlement.amount : -settlement.amount;
+          const amount = settlement.type === 'RECEIPT' ? (settlement.amount || 0) : -(settlement.amount || 0);
           return sum + amount;
         }, 0);
         setBalance(Math.max(0, totalBalance)); // Solo mostrar balance positivo
@@ -163,17 +211,17 @@ export default function DashboardPage() {
       setCategoryChartData(categoryData);
 
       // Gastos recientes (últimos 3)
-      const sortedExpenses = [...currentExpensesRes.data.content]
+      const sortedExpenses = [...currentExpensesData]
         .sort((a: ExpenseResponse, b: ExpenseResponse) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         )
         .slice(0, 3);
       setRecentExpenses(sortedExpenses);
 
       // Grupos recientes (últimos 3)
-      const sortedGroups = [...groupsRes.data.content]
+      const sortedGroups = [...groupsData]
         .sort((a: GroupResponse, b: GroupResponse) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         )
         .slice(0, 3);
       setRecentGroups(sortedGroups);
@@ -348,7 +396,7 @@ export default function DashboardPage() {
                     <div>
                       <p className="text-sm font-medium">{group.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {group.members.length} miembro{group.members.length !== 1 ? 's' : ''}
+                        {group.members?.length || 0} miembro{(group.members?.length || 0) !== 1 ? 's' : ''}
                       </p>
                     </div>
                   </div>

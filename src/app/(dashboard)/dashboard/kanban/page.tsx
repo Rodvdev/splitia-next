@@ -15,6 +15,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, Filter, CheckSquare } from 'lucide-react';
 import { GroupKanban } from '@/components/kanban/GroupKanban';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AllKanbansPage() {
   const [groups, setGroups] = useState<GroupResponse[]>([]);
@@ -40,11 +42,23 @@ export default function AllKanbansPage() {
     try {
       setLoading(true);
       const response = await groupsApi.getAll({ page: 0, size: 100 });
-      if (response.success) {
-        setGroups(response.data.content);
-      }
+      apiLogger.groups({
+        endpoint: 'getAll',
+        success: response.success,
+        params: { page: 0, size: 100 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setGroups(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.groups({
+        endpoint: 'getAll',
+        success: false,
+        params: { page: 0, size: 100 },
+        error: error,
+      });
       console.error('Error loading groups:', error);
+      setGroups([]);
     } finally {
       setLoading(false);
     }
@@ -53,15 +67,32 @@ export default function AllKanbansPage() {
   const loadTags = async (groupId: string) => {
     try {
       const response = await taskTagsApi.getTagsByGroup(groupId);
-      if (response.success) {
-        setTags(response.data);
+      apiLogger.tags({
+        endpoint: 'getTagsByGroup',
+        success: response.success,
+        params: { groupId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      if (response.success && response.data) {
+        // taskTagsApi.getTagsByGroup devuelve ApiResponse<TaskTagResponse[]>
+        // así que response.data es directamente el array
+        setTags(Array.isArray(response.data) ? response.data : []);
+      } else {
+        setTags([]);
       }
     } catch (error) {
+      apiLogger.tags({
+        endpoint: 'getTagsByGroup',
+        success: false,
+        params: { groupId },
+        error: error,
+      });
       console.error('Error loading tags:', error);
     }
   };
 
-  const filteredGroups = groups.filter((group) => {
+  const filteredGroups = (groups || []).filter((group) => {
     const matchesSearch = group.name.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
@@ -103,7 +134,7 @@ export default function AllKanbansPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los grupos</SelectItem>
-                {groups.map((group) => (
+                {(groups || []).map((group) => (
                   <SelectItem key={group.id} value={group.id}>
                     {group.name}
                   </SelectItem>

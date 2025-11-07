@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateSettlementRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createSettlementSchema = z.object({
   amount: z.number().min(0.01, 'El monto debe ser mayor a 0'),
@@ -38,20 +39,33 @@ export default function CreateSettlementPage() {
 
   const onSubmit = async (data: CreateSettlementFormData) => {
     setIsLoading(true);
+    const request: CreateSettlementRequest = {
+      amount: data.amount,
+      currency: data.currency,
+      description: data.description,
+      userId: data.userId,
+      type: data.type,
+    };
     try {
-      const request: CreateSettlementRequest = {
-        amount: data.amount,
-        currency: data.currency,
-        description: data.description,
-        userId: data.userId,
-        type: data.type,
-      };
       const response = await adminApi.createSettlement(request);
+      apiLogger.settlements({
+        endpoint: 'createSettlement',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Liquidación creada exitosamente');
         router.push('/admin/settlements');
       }
     } catch (error: any) {
+      apiLogger.settlements({
+        endpoint: 'createSettlement',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear la liquidación');
     } finally {
       setIsLoading(false);

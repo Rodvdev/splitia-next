@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateBudgetRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createBudgetSchema = z.object({
   amount: z.number().min(0.01, 'El monto debe ser mayor a 0'),
@@ -38,20 +39,33 @@ export default function CreateBudgetPage() {
 
   const onSubmit = async (data: CreateBudgetFormData) => {
     setIsLoading(true);
+    const request: CreateBudgetRequest = {
+      amount: data.amount,
+      month: data.month,
+      year: data.year,
+      currency: data.currency,
+      categoryId: data.categoryId,
+    };
     try {
-      const request: CreateBudgetRequest = {
-        amount: data.amount,
-        month: data.month,
-        year: data.year,
-        currency: data.currency,
-        categoryId: data.categoryId,
-      };
       const response = await adminApi.createBudget(request);
+      apiLogger.budgets({
+        endpoint: 'createBudget',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Presupuesto creado exitosamente');
         router.push('/admin/budgets');
       }
     } catch (error: any) {
+      apiLogger.budgets({
+        endpoint: 'createBudget',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear el presupuesto');
     } finally {
       setIsLoading(false);

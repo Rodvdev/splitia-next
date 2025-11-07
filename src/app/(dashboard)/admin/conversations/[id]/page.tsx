@@ -18,6 +18,7 @@ import { ArrowLeft, MessageSquare, Calendar, Users, Edit, Save, X } from 'lucide
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateConversationSchema = z.object({
   name: z.string().optional(),
@@ -64,10 +65,23 @@ export default function ConversationDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getConversationById(conversationId);
+      apiLogger.conversations({
+        endpoint: 'getConversationById',
+        success: response.success,
+        params: { id: conversationId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setConversation(response.data);
       }
     } catch (err: any) {
+      apiLogger.conversations({
+        endpoint: 'getConversationById',
+        success: false,
+        params: { id: conversationId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar la conversación');
     } finally {
       setLoading(false);
@@ -76,17 +90,30 @@ export default function ConversationDetailPage() {
 
   const onSubmit = async (data: UpdateConversationFormData) => {
     setIsSaving(true);
+    const request: UpdateConversationRequest = {
+      name: data.name,
+    };
     try {
-      const request: UpdateConversationRequest = {
-        name: data.name,
-      };
       const response = await adminApi.updateConversation(conversationId, request);
+      apiLogger.conversations({
+        endpoint: 'updateConversation',
+        success: response.success,
+        params: { id: conversationId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Conversación actualizada exitosamente');
         setConversation(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.conversations({
+        endpoint: 'updateConversation',
+        success: false,
+        params: { id: conversationId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar la conversación');
     } finally {
       setIsSaving(false);
@@ -101,11 +128,24 @@ export default function ConversationDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteConversation(conversationId);
+      apiLogger.conversations({
+        endpoint: 'deleteConversation',
+        success: response.success,
+        params: { id: conversationId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Conversación eliminada correctamente');
         router.push('/admin/conversations');
       }
     } catch (err: any) {
+      apiLogger.conversations({
+        endpoint: 'deleteConversation',
+        success: false,
+        params: { id: conversationId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar la conversación');
     } finally {
       setIsDeleting(false);

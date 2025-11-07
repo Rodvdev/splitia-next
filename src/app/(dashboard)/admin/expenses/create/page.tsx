@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateExpenseRequest, ExpenseShareRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createExpenseSchema = z.object({
   amount: z.number().min(0.01, 'El monto debe ser mayor a 0'),
@@ -47,29 +48,42 @@ export default function CreateExpensePage() {
 
   const onSubmit = async (data: CreateExpenseFormData) => {
     setIsLoading(true);
+    const request: CreateExpenseRequest = {
+      amount: data.amount,
+      description: data.description,
+      date: data.date,
+      currency: data.currency,
+      location: data.location,
+      notes: data.notes,
+      groupId: data.groupId,
+      categoryId: data.categoryId,
+      paidById: data.paidById,
+      shares: data.shares.map(s => ({
+        userId: s.userId,
+        amount: s.amount,
+        type: s.type,
+      })),
+    };
     try {
-      const request: CreateExpenseRequest = {
-        amount: data.amount,
-        description: data.description,
-        date: data.date,
-        currency: data.currency,
-        location: data.location,
-        notes: data.notes,
-        groupId: data.groupId,
-        categoryId: data.categoryId,
-        paidById: data.paidById,
-        shares: data.shares.map(s => ({
-          userId: s.userId,
-          amount: s.amount,
-          type: s.type,
-        })),
-      };
       const response = await adminApi.createExpense(request);
+      apiLogger.expenses({
+        endpoint: 'createExpense',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Gasto creado exitosamente');
         router.push('/admin/expenses');
       }
     } catch (error: any) {
+      apiLogger.expenses({
+        endpoint: 'createExpense',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear el gasto');
     } finally {
       setIsLoading(false);

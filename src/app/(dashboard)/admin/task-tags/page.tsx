@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, MoreVertical, Tag, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AdminTaskTagsPage() {
   const [tags, setTags] = useState<TaskTagResponse[]>([]);
@@ -27,10 +29,21 @@ export default function AdminTaskTagsPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllTaskTags({ page: 0, size: 50 });
-      if (response.success) {
-        setTags(response.data.content);
-      }
+      apiLogger.tags({
+        endpoint: 'getAllTaskTags',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setTags(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.tags({
+        endpoint: 'getAllTaskTags',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading task tags:', error);
     } finally {
       setLoading(false);

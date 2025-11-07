@@ -18,6 +18,7 @@ import { ArrowLeft, CreditCard, Calendar, DollarSign, Tag, RefreshCw, Edit, Save
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateSubscriptionSchema = z.object({
   planType: z.enum(['FREE', 'PREMIUM', 'ENTERPRISE']).optional(),
@@ -68,10 +69,23 @@ export default function SubscriptionDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getSubscriptionById(subscriptionId);
+      apiLogger.subscriptions({
+        endpoint: 'getSubscriptionById',
+        success: response.success,
+        params: { id: subscriptionId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setSubscription(response.data);
       }
     } catch (err: any) {
+      apiLogger.subscriptions({
+        endpoint: 'getSubscriptionById',
+        success: false,
+        params: { id: subscriptionId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar la suscripción');
     } finally {
       setLoading(false);
@@ -80,19 +94,32 @@ export default function SubscriptionDetailPage() {
 
   const onSubmit = async (data: UpdateSubscriptionFormData) => {
     setIsSaving(true);
+    const request: UpdateSubscriptionRequest = {
+      planType: data.planType,
+      status: data.status,
+      autoRenew: data.autoRenew,
+    };
     try {
-      const request: UpdateSubscriptionRequest = {
-        planType: data.planType,
-        status: data.status,
-        autoRenew: data.autoRenew,
-      };
       const response = await adminApi.updateSubscription(subscriptionId, request);
+      apiLogger.subscriptions({
+        endpoint: 'updateSubscription',
+        success: response.success,
+        params: { id: subscriptionId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Suscripción actualizada exitosamente');
         setSubscription(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.subscriptions({
+        endpoint: 'updateSubscription',
+        success: false,
+        params: { id: subscriptionId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar la suscripción');
     } finally {
       setIsSaving(false);
@@ -107,11 +134,24 @@ export default function SubscriptionDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteSubscription(subscriptionId);
+      apiLogger.subscriptions({
+        endpoint: 'deleteSubscription',
+        success: response.success,
+        params: { id: subscriptionId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Suscripción eliminada correctamente');
         router.push('/admin/subscriptions');
       }
     } catch (err: any) {
+      apiLogger.subscriptions({
+        endpoint: 'deleteSubscription',
+        success: false,
+        params: { id: subscriptionId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar la suscripción');
     } finally {
       setIsDeleting(false);

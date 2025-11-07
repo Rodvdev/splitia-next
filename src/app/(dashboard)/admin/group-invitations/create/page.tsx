@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
 import { CreateGroupInvitationRequest } from '@/types';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const createGroupInvitationSchema = z.object({
   groupId: z.string().min(1, 'El ID del grupo es requerido'),
@@ -39,18 +40,31 @@ export default function CreateGroupInvitationPage() {
 
   const onSubmit = async (data: CreateGroupInvitationFormData) => {
     setIsLoading(true);
+    const request: CreateGroupInvitationRequest = {
+      groupId: data.groupId,
+      email: data.email || undefined,
+      userId: data.userId || undefined,
+    };
     try {
-      const request: CreateGroupInvitationRequest = {
-        groupId: data.groupId,
-        email: data.email || undefined,
-        userId: data.userId || undefined,
-      };
       const response = await adminApi.createGroupInvitation(request);
+      apiLogger.general({
+        endpoint: 'createGroupInvitation',
+        success: response.success,
+        params: { request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Invitación creada exitosamente');
         router.push('/admin/group-invitations');
       }
     } catch (error: any) {
+      apiLogger.general({
+        endpoint: 'createGroupInvitation',
+        success: false,
+        params: { request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al crear la invitación');
     } finally {
       setIsLoading(false);

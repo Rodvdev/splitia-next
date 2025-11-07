@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search, MoreVertical, Receipt, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 export default function AdminExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
@@ -26,10 +28,21 @@ export default function AdminExpensesPage() {
     try {
       setLoading(true);
       const response = await adminApi.getAllExpenses({ page: 0, size: 50 });
-      if (response.success) {
-        setExpenses(response.data.content);
-      }
+      apiLogger.expenses({
+        endpoint: 'getAllExpenses',
+        success: response.success,
+        params: { page: 0, size: 50 },
+        data: response.data,
+        error: response.success ? null : response,
+      });
+      setExpenses(extractDataFromResponse(response));
     } catch (error) {
+      apiLogger.expenses({
+        endpoint: 'getAllExpenses',
+        success: false,
+        params: { page: 0, size: 50 },
+        error: error,
+      });
       console.error('Error loading expenses:', error);
     } finally {
       setLoading(false);

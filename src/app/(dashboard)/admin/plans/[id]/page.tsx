@@ -12,6 +12,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { ArrowLeft, CreditCard, Check, X, Users, Zap, DollarSign, BarChart3, Download, HeadphonesIcon } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 export default function PlanDetailPage() {
   const params = useParams();
@@ -32,10 +33,23 @@ export default function PlanDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getPlanById(planId);
+      apiLogger.plans({
+        endpoint: 'getPlanById',
+        success: response.success,
+        params: { id: planId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setPlan(response.data);
       }
     } catch (err: any) {
+      apiLogger.plans({
+        endpoint: 'getPlanById',
+        success: false,
+        params: { id: planId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar el plan');
     } finally {
       setLoading(false);

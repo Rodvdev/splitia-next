@@ -18,6 +18,7 @@ import { ArrowLeft, Receipt, Calendar, MapPin, FileText, User, Users, Tag, Edit,
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateExpenseSchema = z.object({
   amount: z.number().min(0.01, 'El monto debe ser mayor a 0').optional(),
@@ -76,10 +77,23 @@ export default function ExpenseDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getExpenseById(expenseId);
+      apiLogger.expenses({
+        endpoint: 'getExpenseById',
+        success: response.success,
+        params: { id: expenseId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setExpense(response.data);
       }
     } catch (err: any) {
+      apiLogger.expenses({
+        endpoint: 'getExpenseById',
+        success: false,
+        params: { id: expenseId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar el gasto');
     } finally {
       setLoading(false);
@@ -88,23 +102,36 @@ export default function ExpenseDetailPage() {
 
   const onSubmit = async (data: UpdateExpenseFormData) => {
     setIsSaving(true);
+    const request: UpdateExpenseRequest = {
+      amount: data.amount,
+      description: data.description,
+      date: data.date,
+      currency: data.currency,
+      location: data.location,
+      notes: data.notes,
+      categoryId: data.categoryId,
+    };
     try {
-      const request: UpdateExpenseRequest = {
-        amount: data.amount,
-        description: data.description,
-        date: data.date,
-        currency: data.currency,
-        location: data.location,
-        notes: data.notes,
-        categoryId: data.categoryId,
-      };
       const response = await adminApi.updateExpense(expenseId, request);
+      apiLogger.expenses({
+        endpoint: 'updateExpense',
+        success: response.success,
+        params: { id: expenseId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Gasto actualizado exitosamente');
         setExpense(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.expenses({
+        endpoint: 'updateExpense',
+        success: false,
+        params: { id: expenseId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar el gasto');
     } finally {
       setIsSaving(false);

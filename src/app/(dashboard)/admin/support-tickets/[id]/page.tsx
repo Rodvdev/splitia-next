@@ -18,6 +18,7 @@ import { ArrowLeft, HelpCircle, User, Calendar, Tag, AlertCircle, Edit, Save, X 
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
+import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateSupportTicketSchema = z.object({
   title: z.string().min(1, 'El título es requerido').optional(),
@@ -72,10 +73,23 @@ export default function SupportTicketDetailPage() {
       setLoading(true);
       setError(null);
       const response = await adminApi.getSupportTicketById(ticketId);
+      apiLogger.support({
+        endpoint: 'getSupportTicketById',
+        success: response.success,
+        params: { id: ticketId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         setTicket(response.data);
       }
     } catch (err: any) {
+      apiLogger.support({
+        endpoint: 'getSupportTicketById',
+        success: false,
+        params: { id: ticketId },
+        error: err,
+      });
       setError(err.response?.data?.message || 'Error al cargar el ticket');
     } finally {
       setLoading(false);
@@ -84,21 +98,34 @@ export default function SupportTicketDetailPage() {
 
   const onSubmit = async (data: UpdateSupportTicketFormData) => {
     setIsSaving(true);
+    const request: UpdateSupportTicketRequest = {
+      title: data.title,
+      description: data.description,
+      status: data.status,
+      priority: data.priority,
+      resolution: data.resolution,
+    };
     try {
-      const request: UpdateSupportTicketRequest = {
-        title: data.title,
-        description: data.description,
-        status: data.status,
-        priority: data.priority,
-        resolution: data.resolution,
-      };
       const response = await adminApi.updateSupportTicket(ticketId, request);
+      apiLogger.support({
+        endpoint: 'updateSupportTicket',
+        success: response.success,
+        params: { id: ticketId, request },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Ticket actualizado exitosamente');
         setTicket(response.data);
         setIsEditing(false);
       }
     } catch (error: any) {
+      apiLogger.support({
+        endpoint: 'updateSupportTicket',
+        success: false,
+        params: { id: ticketId, request },
+        error: error,
+      });
       toast.error(error.response?.data?.message || 'Error al actualizar el ticket');
     } finally {
       setIsSaving(false);
@@ -113,11 +140,24 @@ export default function SupportTicketDetailPage() {
     try {
       setIsDeleting(true);
       const response = await adminApi.deleteSupportTicket(ticketId);
+      apiLogger.support({
+        endpoint: 'deleteSupportTicket',
+        success: response.success,
+        params: { id: ticketId },
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
         toast.success('Ticket eliminado correctamente');
         router.push('/admin/support-tickets');
       }
     } catch (err: any) {
+      apiLogger.support({
+        endpoint: 'deleteSupportTicket',
+        success: false,
+        params: { id: ticketId },
+        error: err,
+      });
       toast.error(err.response?.data?.message || 'Error al eliminar el ticket');
     } finally {
       setIsDeleting(false);

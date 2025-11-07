@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Plus, AlertCircle, CheckCircle, Clock, XCircle, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
+import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: 'Abierto',
@@ -65,10 +67,23 @@ export default function SupportPage() {
       setLoading(true);
       setError(null);
       const response = await supportApi.getAll();
+      apiLogger.support({
+        endpoint: 'getAll',
+        success: response.success,
+        params: {},
+        data: response.data,
+        error: response.success ? null : response,
+      });
       if (response.success) {
-        setTickets(response.data.content || []);
+        setTickets(extractDataFromResponse(response));
       }
     } catch (err) {
+      apiLogger.support({
+        endpoint: 'getAll',
+        success: false,
+        params: {},
+        error: err,
+      });
       const errorMessage = err instanceof Error 
         ? err.message 
         : 'Error al cargar los tickets';
