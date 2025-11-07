@@ -9,7 +9,7 @@ import { adminApi } from '@/lib/api/admin';
 import { GroupResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search, MoreVertical, Users } from 'lucide-react';
+import { Search, MoreVertical, Users, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 
@@ -57,6 +57,12 @@ export default function AdminGroupsPage() {
           <h1 className="text-3xl font-bold">Grupos</h1>
           <p className="text-muted-foreground">Gestiona todos los grupos del sistema</p>
         </div>
+        <Link href="/admin/groups/create">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Grupo
+          </Button>
+        </Link>
       </div>
 
       <Card>

@@ -9,7 +9,7 @@ import { adminApi } from '@/lib/api/admin';
 import { ConversationResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search, MoreVertical, MessageSquare } from 'lucide-react';
+import { Search, MoreVertical, MessageSquare, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 
@@ -60,6 +60,12 @@ export default function AdminConversationsPage() {
           <h1 className="text-3xl font-bold">Conversaciones</h1>
           <p className="text-muted-foreground">Gestiona todas las conversaciones del sistema</p>
         </div>
+        <Link href="/admin/conversations/create">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Conversación
+          </Button>
+        </Link>
       </div>
 
       <Card>

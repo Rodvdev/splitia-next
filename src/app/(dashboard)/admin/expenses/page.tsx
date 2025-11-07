@@ -9,7 +9,7 @@ import { adminApi } from '@/lib/api/admin';
 import { ExpenseResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search, MoreVertical, Receipt } from 'lucide-react';
+import { Search, MoreVertical, Receipt, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
 
@@ -58,6 +58,12 @@ export default function AdminExpensesPage() {
           <h1 className="text-3xl font-bold">Gastos</h1>
           <p className="text-muted-foreground">Gestiona todos los gastos del sistema</p>
         </div>
+        <Link href="/admin/expenses/create">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Gasto
+          </Button>
+        </Link>
       </div>
 
       <Card>

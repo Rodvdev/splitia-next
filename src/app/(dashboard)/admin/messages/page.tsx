@@ -9,7 +9,7 @@ import { adminApi } from '@/lib/api/admin';
 import { MessageResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search, MoreVertical, Mail } from 'lucide-react';
+import { Search, MoreVertical, Mail, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 
@@ -63,6 +63,12 @@ export default function AdminMessagesPage() {
           <h1 className="text-3xl font-bold">Mensajes</h1>
           <p className="text-muted-foreground">Gestiona todos los mensajes del sistema</p>
         </div>
+        <Link href="/admin/messages/create">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Mensaje
+          </Button>
+        </Link>
       </div>
 
       <Card>

@@ -9,7 +9,7 @@ import { adminApi } from '@/lib/api/admin';
 import { SupportTicketResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search, MoreVertical, HelpCircle } from 'lucide-react';
+import { Search, MoreVertical, HelpCircle, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 
@@ -111,6 +111,12 @@ export default function AdminSupportTicketsPage() {
           <h1 className="text-3xl font-bold">Tickets de Soporte</h1>
           <p className="text-muted-foreground">Gestiona todos los tickets de soporte</p>
         </div>
+        <Link href="/admin/support-tickets/create">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Ticket
+          </Button>
+        </Link>
       </div>
 
       <Card>

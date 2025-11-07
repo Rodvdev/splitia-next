@@ -9,3 +9,13 @@ export interface GroupUserResponse {
   joinedAt: string;
 }
 
+export interface CreateGroupUserRequest {
+  groupId: string;
+  userId: string;
+  role?: 'ADMIN' | 'MEMBER' | 'GUEST' | 'ASSISTANT';
+}
+
+export interface UpdateGroupUserRequest {
+  role?: 'ADMIN' | 'MEMBER' | 'GUEST' | 'ASSISTANT';
+}
+

@@ -31,6 +31,18 @@ export interface ExpenseShareRequest {
   type: 'EQUAL' | 'PERCENTAGE' | 'FIXED';
 }
 
+export interface CreateExpenseShareRequest {
+  expenseId: string;
+  userId: string;
+  amount: number;
+  type: 'EQUAL' | 'PERCENTAGE' | 'FIXED';
+}
+
+export interface UpdateExpenseShareRequest {
+  amount?: number;
+  type?: 'EQUAL' | 'PERCENTAGE' | 'FIXED';
+}
+
 export interface CreateExpenseRequest {
   amount: number;
   description: string;

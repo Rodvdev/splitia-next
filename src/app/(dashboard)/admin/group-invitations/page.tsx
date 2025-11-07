@@ -9,7 +9,7 @@ import { adminApi } from '@/lib/api/admin';
 import { GroupInvitationResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search, MoreVertical, UserPlus } from 'lucide-react';
+import { Search, MoreVertical, UserPlus, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 
@@ -79,6 +79,12 @@ export default function AdminGroupInvitationsPage() {
           <h1 className="text-3xl font-bold">Invitaciones a Grupos</h1>
           <p className="text-muted-foreground">Gestiona todas las invitaciones a grupos</p>
         </div>
+        <Link href="/admin/group-invitations/create">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Invitación
+          </Button>
+        </Link>
       </div>
 
       <Card>

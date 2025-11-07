@@ -11,3 +11,13 @@ export interface GroupInvitationResponse {
   createdAt: string;
 }
 
+export interface CreateGroupInvitationRequest {
+  groupId: string;
+  email?: string;
+  userId?: string;
+}
+
+export interface UpdateGroupInvitationRequest {
+  status?: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+}
+

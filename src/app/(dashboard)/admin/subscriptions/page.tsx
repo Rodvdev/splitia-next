@@ -9,7 +9,7 @@ import { adminApi } from '@/lib/api/admin';
 import { SubscriptionResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search, MoreVertical, CreditCard } from 'lucide-react';
+import { Search, MoreVertical, CreditCard, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
 
@@ -88,6 +88,12 @@ export default function AdminSubscriptionsPage() {
           <h1 className="text-3xl font-bold">Suscripciones</h1>
           <p className="text-muted-foreground">Gestiona todas las suscripciones del sistema</p>
         </div>
+        <Link href="/admin/subscriptions/create">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Suscripción
+          </Button>
+        </Link>
       </div>
 
       <Card>

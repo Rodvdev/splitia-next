@@ -9,7 +9,7 @@ import { adminApi } from '@/lib/api/admin';
 import { ExpenseShareResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search, MoreVertical, Share2 } from 'lucide-react';
+import { Search, MoreVertical, Share2, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils/format';
 
@@ -67,6 +67,12 @@ export default function AdminExpenseSharesPage() {
           <h1 className="text-3xl font-bold">Participaciones en Gastos</h1>
           <p className="text-muted-foreground">Gestiona todas las participaciones en gastos</p>
         </div>
+        <Link href="/admin/expense-shares/create">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Participación
+          </Button>
+        </Link>
       </div>
 
       <Card>

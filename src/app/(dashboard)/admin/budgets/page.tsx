@@ -9,7 +9,7 @@ import { adminApi } from '@/lib/api/admin';
 import { BudgetResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search, MoreVertical, Wallet } from 'lucide-react';
+import { Search, MoreVertical, Wallet, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
 
@@ -66,6 +66,12 @@ export default function AdminBudgetsPage() {
           <h1 className="text-3xl font-bold">Presupuestos</h1>
           <p className="text-muted-foreground">Gestiona todos los presupuestos del sistema</p>
         </div>
+        <Link href="/admin/budgets/create">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Presupuesto
+          </Button>
+        </Link>
       </div>
 
       <Card>

@@ -1,30 +1,75 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { adminApi } from '@/lib/api/admin';
-import { UserResponse } from '@/types';
+import { UserResponse, UpdateUserRequest } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { ArrowLeft, Mail, Phone, Calendar, Globe, DollarSign } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Calendar, Globe, DollarSign, Edit, Save, X } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
+import { toast } from 'sonner';
+
+const updateUserSchema = z.object({
+  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
+  lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres').optional(),
+  email: z.string().email('Email inválido').optional(),
+  phoneNumber: z.string().optional(),
+  role: z.string().optional(),
+  currency: z.string().optional(),
+  language: z.string().optional(),
+});
+
+type UpdateUserFormData = z.infer<typeof updateUserSchema>;
 
 export default function UserDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const userId = params.id as string;
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<UpdateUserFormData>({
+    resolver: zodResolver(updateUserSchema),
+  });
 
   useEffect(() => {
     if (userId) {
       loadUser();
     }
   }, [userId]);
+
+  useEffect(() => {
+    if (user && isEditing) {
+      reset({
+        name: user.name,
+        lastName: user.lastName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        currency: user.currency,
+        language: user.language,
+      });
+    }
+  }, [user, isEditing, reset]);
 
   const loadUser = async () => {
     try {
@@ -38,6 +83,50 @@ export default function UserDetailPage() {
       setError(err.response?.data?.message || 'Error al cargar el usuario');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onSubmit = async (data: UpdateUserFormData) => {
+    setIsSaving(true);
+    try {
+      const request: UpdateUserRequest = {
+        name: data.name,
+        lastName: data.lastName,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        role: data.role,
+        currency: data.currency,
+        language: data.language,
+      };
+      const response = await adminApi.updateUser(userId, request);
+      if (response.success) {
+        toast.success('Usuario actualizado exitosamente');
+        setUser(response.data);
+        setIsEditing(false);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Error al actualizar el usuario');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      const response = await adminApi.deleteUser(userId);
+      if (response.success) {
+        toast.success('Usuario eliminado correctamente');
+        router.push('/admin/users');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Error al eliminar el usuario');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -71,76 +160,147 @@ export default function UserDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Información Personal</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-xl font-semibold">
-                  {user.name[0]}{user.lastName[0]}
-                </span>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">{user.name} {user.lastName}</h3>
-                <p className="text-sm text-muted-foreground">ID: {user.id}</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{user.email}</span>
-              </div>
-              {user.phoneNumber && (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{user.phoneNumber}</span>
+      {!isEditing ? (
+        <>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Información Personal</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-xl font-semibold">
+                      {user.name[0]}{user.lastName[0]}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">{user.name} {user.lastName}</h3>
+                    <p className="text-sm text-muted-foreground">ID: {user.id}</p>
+                  </div>
                 </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">
-                  Registrado: {formatDate(user.createdAt, 'PP', 'es')}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{user.email}</span>
+                  </div>
+                  {user.phoneNumber && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{user.phoneNumber}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      Registrado: {formatDate(user.createdAt, 'PP', 'es')}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Preferencias</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Moneda:</span>
+                  <Badge variant="outline">{user.currency}</Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Idioma:</span>
+                  <Badge variant="outline">{user.language}</Badge>
+                </div>
+                {user.role && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Rol:</span>
+                    <Badge variant="outline">{user.role}</Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Acciones</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar Usuario
+                </Button>
+                <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                  {isDeleting ? 'Eliminando...' : 'Eliminar Usuario'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Preferencias</CardTitle>
+            <CardTitle>Editar Usuario</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Moneda:</span>
-              <Badge variant="outline">{user.currency}</Badge>
-            </div>
-            <div className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Idioma:</span>
-              <Badge variant="outline">{user.language}</Badge>
-            </div>
+          <CardContent>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nombre</Label>
+                  <Input id="name" {...register('name')} />
+                  {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Apellido</Label>
+                  <Input id="lastName" {...register('lastName')} />
+                  {errors.lastName && (
+                    <p className="text-sm text-destructive">{errors.lastName.message}</p>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" {...register('email')} />
+                {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Teléfono</Label>
+                <Input id="phoneNumber" type="tel" {...register('phoneNumber')} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currency">Moneda</Label>
+                  <Input id="currency" {...register('currency')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="language">Idioma</Label>
+                  <Input id="language" {...register('language')} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Rol</Label>
+                <Input id="role" {...register('role')} />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={isSaving}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
+                  <X className="h-4 w-4 mr-2" />
+                  Cancelar
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Acciones</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Button variant="outline">Suspender Usuario</Button>
-            <Button variant="outline">Cambiar Plan</Button>
-            <Button variant="destructive">Eliminar Usuario</Button>
-          </div>
-        </CardContent>
-      </Card>
+      )}
     </div>
   );
 }

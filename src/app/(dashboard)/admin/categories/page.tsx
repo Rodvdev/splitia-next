@@ -9,7 +9,7 @@ import { adminApi } from '@/lib/api/admin';
 import { CategoryResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search, MoreVertical, Tag } from 'lucide-react';
+import { Search, MoreVertical, Tag, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 
@@ -56,6 +56,12 @@ export default function AdminCategoriesPage() {
           <h1 className="text-3xl font-bold">Categorías</h1>
           <p className="text-muted-foreground">Gestiona todas las categorías del sistema</p>
         </div>
+        <Link href="/admin/categories/create">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Categoría
+          </Button>
+        </Link>
       </div>
 
       <Card>
