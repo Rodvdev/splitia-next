@@ -8,7 +8,7 @@ interface JWTPayload {
   role?: string;
   roles?: string[];
   userRole?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Decode JWT token (client-side)
@@ -24,7 +24,7 @@ function decodeJWT(token: string): JWTPayload | null {
     const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
     const decoded = atob(padded);
     return JSON.parse(decoded) as JWTPayload;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

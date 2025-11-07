@@ -54,8 +54,11 @@ export default function LoginPage() {
           router.push('/dashboard');
         }
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al iniciar sesión');
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al iniciar sesión';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

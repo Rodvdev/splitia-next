@@ -5,7 +5,9 @@ interface JWTPayload {
   sub?: string;
   email?: string;
   role?: string;
-  [key: string]: any;
+  roles?: string[];
+  userRole?: string;
+  [key: string]: unknown;
 }
 
 // Decode JWT token without verification (for middleware)
@@ -17,7 +19,7 @@ function decodeJWT(token: string): JWTPayload | null {
     const payload = parts[1];
     const decoded = Buffer.from(payload, 'base64url').toString('utf-8');
     return JSON.parse(decoded) as JWTPayload;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
