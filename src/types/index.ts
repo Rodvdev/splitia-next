@@ -12,4 +12,7 @@ export * from './api/support';
 export * from './api/conversation';
 export * from './api/group-invitation';
 export * from './api/group-user';
+export * from './api/plan';
+export * from './api/task';
+export * from './api/task-tag';
 

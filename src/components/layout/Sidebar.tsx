@@ -18,6 +18,7 @@ import {
   Mail,
   UserCheck,
   UserPlus,
+  CheckSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -26,6 +27,7 @@ const navigation = [
   { name: 'Gastos', href: '/dashboard/expenses', icon: Receipt },
   { name: 'Grupos', href: '/dashboard/groups', icon: Users },
   { name: 'Presupuesto', href: '/dashboard/budgets', icon: Wallet },
+  { name: 'Kanban', href: '/dashboard/kanban', icon: CheckSquare },
   { name: 'Chat', href: '/dashboard/chat', icon: MessageSquare },
   { name: 'Perfil', href: '/dashboard/profile', icon: User },
   { name: 'Suscripción', href: '/dashboard/subscriptions', icon: CreditCard },
@@ -45,6 +47,9 @@ const adminNavigation = [
   { name: 'Mensajes', href: '/admin/messages', icon: Mail },
   { name: 'Liquidaciones', href: '/admin/settlements', icon: FileText },
   { name: 'Suscripciones', href: '/admin/subscriptions', icon: CreditCard },
+  { name: 'Planes', href: '/admin/plans', icon: CreditCard },
+  { name: 'Tareas', href: '/admin/tasks', icon: CheckSquare },
+  { name: 'Etiquetas', href: '/admin/task-tags', icon: Tag },
   { name: 'Tickets', href: '/admin/support-tickets', icon: HelpCircle },
   { name: 'Invitaciones', href: '/admin/group-invitations', icon: UserPlus },
   { name: 'Miembros', href: '/admin/group-users', icon: UserCheck },

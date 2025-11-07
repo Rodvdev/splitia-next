@@ -14,6 +14,7 @@ import {
   UpdateExpenseRequest,
   ExpenseShareResponse,
   ExpenseShareRequest,
+  UpdateExpenseShareRequest,
   BudgetResponse,
   CreateBudgetRequest,
   UpdateBudgetRequest,
@@ -37,6 +38,13 @@ import {
   UpdateSupportTicketRequest,
   GroupInvitationResponse,
   GroupUserResponse,
+  PlanResponse,
+  TaskResponse,
+  CreateTaskRequest,
+  UpdateTaskRequest,
+  TaskTagResponse,
+  CreateTaskTagRequest,
+  UpdateTaskTagRequest,
 } from '@/types';
 
 export const adminApi = {
@@ -121,7 +129,7 @@ export const adminApi = {
   },
   updateExpenseShare: async (
     id: string,
-    data: ExpenseShareRequest
+    data: UpdateExpenseShareRequest
   ): Promise<ApiResponse<ExpenseShareResponse>> => {
     const response = await apiClient.instance.put(`/admin/expense-shares/${id}`, data);
     return response.data;
@@ -355,6 +363,63 @@ export const adminApi = {
   },
   deleteGroupUser: async (id: string): Promise<ApiResponse<void>> => {
     const response = await apiClient.instance.delete(`/admin/group-users/${id}`);
+    return response.data;
+  },
+
+  // Plans
+  getAllPlans: async (pageable?: Pageable): Promise<ApiResponse<Page<PlanResponse>>> => {
+    const response = await apiClient.instance.get('/admin/plans', { params: pageable });
+    return response.data;
+  },
+  getPlanById: async (id: string): Promise<ApiResponse<PlanResponse>> => {
+    const response = await apiClient.instance.get(`/admin/plans/${id}`);
+    return response.data;
+  },
+
+  // Tasks
+  getAllTasks: async (pageable?: Pageable): Promise<ApiResponse<Page<TaskResponse>>> => {
+    const response = await apiClient.instance.get('/admin/tasks', { params: pageable });
+    return response.data;
+  },
+  getTaskById: async (id: string): Promise<ApiResponse<TaskResponse>> => {
+    const response = await apiClient.instance.get(`/admin/tasks/${id}`);
+    return response.data;
+  },
+  createTask: async (data: CreateTaskRequest): Promise<ApiResponse<TaskResponse>> => {
+    const response = await apiClient.instance.post('/admin/tasks', data);
+    return response.data;
+  },
+  updateTask: async (id: string, data: UpdateTaskRequest): Promise<ApiResponse<TaskResponse>> => {
+    const response = await apiClient.instance.put(`/admin/tasks/${id}`, data);
+    return response.data;
+  },
+  deleteTask: async (id: string): Promise<ApiResponse<void>> => {
+    const response = await apiClient.instance.delete(`/admin/tasks/${id}`);
+    return response.data;
+  },
+
+  // Task Tags
+  getAllTaskTags: async (pageable?: Pageable): Promise<ApiResponse<Page<TaskTagResponse>>> => {
+    const response = await apiClient.instance.get('/admin/task-tags', { params: pageable });
+    return response.data;
+  },
+  getTaskTagById: async (id: string): Promise<ApiResponse<TaskTagResponse>> => {
+    const response = await apiClient.instance.get(`/admin/task-tags/${id}`);
+    return response.data;
+  },
+  createTaskTag: async (data: CreateTaskTagRequest): Promise<ApiResponse<TaskTagResponse>> => {
+    const response = await apiClient.instance.post('/admin/task-tags', data);
+    return response.data;
+  },
+  updateTaskTag: async (
+    id: string,
+    data: UpdateTaskTagRequest
+  ): Promise<ApiResponse<TaskTagResponse>> => {
+    const response = await apiClient.instance.put(`/admin/task-tags/${id}`, data);
+    return response.data;
+  },
+  deleteTaskTag: async (id: string): Promise<ApiResponse<void>> => {
+    const response = await apiClient.instance.delete(`/admin/task-tags/${id}`);
     return response.data;
   },
 };

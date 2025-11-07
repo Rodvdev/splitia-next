@@ -127,6 +127,18 @@ function getAdminRouteForRole(role: string | null): string {
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
+  // Handle landing page redirect for authenticated users
+  if (pathname === '/' && hasValidSession(request)) {
+    const token = getTokenFromRequest(request);
+    const role = token ? getUserRole(token) : null;
+    
+    // Redirect admins to admin dashboard, regular users to user dashboard
+    if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+      return NextResponse.redirect(new URL('/admin', request.url));
+    }
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+  
   // Only process admin routes
   if (!pathname.startsWith('/admin')) {
     return NextResponse.next();

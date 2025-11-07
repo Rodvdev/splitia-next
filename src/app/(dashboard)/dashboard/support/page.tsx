@@ -29,12 +29,19 @@ const STATUS_ICONS: Record<string, typeof AlertCircle> = {
   CLOSED: XCircle,
 };
 
-const STATUS_COLORS: Record<string, 'default' | 'success' | 'destructive' | 'warning'> = {
-  OPEN: 'warning',
+const STATUS_COLORS: Record<string, 'default' | 'destructive' | 'outline' | 'secondary'> = {
+  OPEN: 'outline',
   IN_PROGRESS: 'default',
-  PENDING_CUSTOMER: 'warning',
-  RESOLVED: 'success',
-  CLOSED: 'default',
+  PENDING_CUSTOMER: 'outline',
+  RESOLVED: 'default',
+  CLOSED: 'secondary',
+};
+
+const PRIORITY_COLORS: Record<string, 'default' | 'destructive' | 'outline' | 'secondary'> = {
+  LOW: 'secondary',
+  MEDIUM: 'default',
+  HIGH: 'outline',
+  URGENT: 'destructive',
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -42,13 +49,6 @@ const PRIORITY_LABELS: Record<string, string> = {
   MEDIUM: 'Media',
   HIGH: 'Alta',
   URGENT: 'Urgente',
-};
-
-const PRIORITY_COLORS: Record<string, 'default' | 'success' | 'destructive' | 'warning'> = {
-  LOW: 'default',
-  MEDIUM: 'default',
-  HIGH: 'warning',
-  URGENT: 'destructive',
 };
 
 export default function SupportPage() {
@@ -151,10 +151,26 @@ export default function SupportPage() {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={STATUS_COLORS[ticket.status] || 'default'}>
+                        <Badge 
+                          variant={STATUS_COLORS[ticket.status] || 'default'}
+                          className={
+                            ticket.status === 'OPEN' || ticket.status === 'PENDING_CUSTOMER' 
+                              ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-transparent' 
+                              : ticket.status === 'RESOLVED' 
+                              ? 'bg-green-500 hover:bg-green-600 text-white border-transparent'
+                              : ''
+                          }
+                        >
                           {STATUS_LABELS[ticket.status] || ticket.status}
                         </Badge>
-                        <Badge variant={PRIORITY_COLORS[ticket.priority] || 'default'}>
+                        <Badge 
+                          variant={PRIORITY_COLORS[ticket.priority] || 'default'}
+                          className={
+                            ticket.priority === 'HIGH' 
+                              ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-transparent'
+                              : ''
+                          }
+                        >
                           {PRIORITY_LABELS[ticket.priority] || ticket.priority}
                         </Badge>
                         <Badge variant="outline">

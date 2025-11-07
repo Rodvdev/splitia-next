@@ -9,8 +9,9 @@ import { subscriptionsApi } from '@/lib/api/subscriptions';
 import { SubscriptionResponse } from '@/types';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { CreditCard, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { CreditCard, CheckCircle, XCircle, AlertCircle, Settings } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
+import Link from 'next/link';
 
 const PLAN_LABELS: Record<string, string> = {
   FREE: 'Gratuito',
@@ -26,12 +27,12 @@ const STATUS_LABELS: Record<string, string> = {
   PAST_DUE: 'Vencida',
 };
 
-const STATUS_COLORS: Record<string, 'default' | 'success' | 'destructive' | 'warning'> = {
-  ACTIVE: 'success',
-  INACTIVE: 'default',
+const STATUS_COLORS: Record<string, 'default' | 'destructive' | 'outline' | 'secondary'> = {
+  ACTIVE: 'default',
+  INACTIVE: 'outline',
   CANCELLED: 'destructive',
   EXPIRED: 'destructive',
-  PAST_DUE: 'warning',
+  PAST_DUE: 'outline',
 };
 
 export default function SubscriptionsPage() {
@@ -115,9 +116,19 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Suscripción</h1>
-        <p className="text-muted-foreground">Gestiona tu plan de suscripción</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Suscripción</h1>
+          <p className="text-muted-foreground">Gestiona tu plan de suscripción</p>
+        </div>
+        {subscription && (
+          <Link href="/dashboard/subscriptions/settings">
+            <Button variant="outline">
+              <Settings className="h-4 w-4 mr-2" />
+              Configuración
+            </Button>
+          </Link>
+        )}
       </div>
 
       <Card>
@@ -127,7 +138,10 @@ export default function SubscriptionsPage() {
               <CreditCard className="h-5 w-5" />
               Plan Actual
             </CardTitle>
-            <Badge variant={STATUS_COLORS[subscription.status] || 'default'}>
+            <Badge 
+              variant={STATUS_COLORS[subscription.status] || 'default'}
+              className={subscription.status === 'ACTIVE' ? 'bg-green-500 hover:bg-green-600' : subscription.status === 'PAST_DUE' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : ''}
+            >
               {PLAN_LABELS[subscription.planType] || subscription.planType}
             </Badge>
           </div>
@@ -187,9 +201,11 @@ export default function SubscriptionsPage() {
 
           {subscription.status === 'ACTIVE' && (
             <div className="pt-4 border-t">
-              <Button variant="outline" className="w-full sm:w-auto">
-                Cambiar Plan
-              </Button>
+              <Link href="/dashboard/subscriptions/settings">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  Cambiar Plan
+                </Button>
+              </Link>
             </div>
           )}
         </CardContent>
