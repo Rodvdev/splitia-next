@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/store/authStore';
-import { setToken, setRefreshToken } from '@/lib/auth/token';
+import { setToken, setRefreshToken, isAdmin } from '@/lib/auth/token';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,7 +45,14 @@ export default function LoginPage() {
         setStoreToken(response.data.token);
         setUser(response.data.user);
         toast.success('Inicio de sesión exitoso');
-        router.push('/dashboard');
+        
+        // Redirect based on user role
+        const userIsAdmin = isAdmin(response.data.token);
+        if (userIsAdmin) {
+          router.push('/admin');
+        } else {
+          router.push('/dashboard');
+        }
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Error al iniciar sesión');
