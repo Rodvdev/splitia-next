@@ -50,11 +50,20 @@ class WebSocketService {
     // https://api.splitia.com/api -> https://api.splitia.com
     let baseUrl = API_URL.replace('/api', '');
     
-    // Si la página es HTTPS, asegurar que la URL del WebSocket también use HTTPS
+    // CRÍTICO: Si es localhost, forzar HTTP (no HTTPS)
+    // Esto evita ERR_SSL_PROTOCOL_ERROR cuando la página es HTTPS pero el backend es HTTP
+    // Incluso si la variable de entorno tiene https://localhost, lo convertimos a http://
+    const isLocalhost = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
+    if (isLocalhost) {
+      baseUrl = baseUrl.replace(/^https:/i, 'http:');
+      console.log('🔧 Localhost detectado. Forzando HTTP para evitar errores SSL.');
+    }
+    
+    // Si la página es HTTPS y NO es localhost, asegurar que la URL del WebSocket también use HTTPS
     // Esto previene el error SecurityError cuando se intenta conectar HTTP desde HTTPS
-    if (isSecurePage) {
+    if (isSecurePage && !isLocalhost) {
       if (baseUrl.startsWith('http://')) {
-        // Actualizar HTTP a HTTPS cuando la página es HTTPS
+        // Actualizar HTTP a HTTPS cuando la página es HTTPS (solo para producción)
         baseUrl = baseUrl.replace('http://', 'https://');
         console.log('🔒 Página HTTPS detectada. Actualizando URL del WebSocket a HTTPS');
       } else if (!baseUrl.startsWith('http')) {
@@ -66,7 +75,7 @@ class WebSocketService {
     
     const wsUrl = `${baseUrl}/ws`;
 
-    console.log(`🔌 Inicializando WebSocket en: ${wsUrl}${isSecurePage ? ' (HTTPS seguro)' : ''}`);
+    console.log(`🔌 Inicializando WebSocket en: ${wsUrl}${isSecurePage && !isLocalhost ? ' (HTTPS seguro)' : isLocalhost ? ' (HTTP localhost)' : ''}`);
 
     this.client = new Client({
       webSocketFactory: () => {
