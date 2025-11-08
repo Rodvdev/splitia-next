@@ -20,11 +20,8 @@ import {
   CheckSquare,
   Shield,
   BarChart3,
-  FileBarChart,
   Workflow,
-  FolderOpen,
   Plug,
-  Megaphone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import {
@@ -59,14 +56,9 @@ const adminNavigation = [
   { name: 'Suscripciones', href: '/admin/subscriptions', icon: CreditCard },
   { name: 'Planes', href: '/admin/plans', icon: CreditCard },
   { name: 'Tickets', href: '/admin/support-tickets', icon: HelpCircle },
-  { name: 'Contactos', href: '/admin/crm/contacts', icon: User },
-  { name: 'Facturas', href: '/admin/finance/invoices', icon: FileText },
   { name: 'Auditoría', href: '/admin/audit/logs', icon: Shield },
-  { name: 'Marketing', href: '/admin/marketing/campaigns', icon: Megaphone },
   { name: 'Analytics', href: '/admin/analytics/customers', icon: BarChart3 },
-  { name: 'Reportes', href: '/admin/reports', icon: FileBarChart },
   { name: 'Workflows', href: '/admin/automation/workflows', icon: Workflow },
-  { name: 'Documentos', href: '/admin/documents', icon: FolderOpen },
   { name: 'Integraciones', href: '/admin/integrations', icon: Plug },
 ];
 

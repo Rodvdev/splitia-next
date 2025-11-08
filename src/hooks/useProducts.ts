@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { inventoryApi } from '@/lib/api/inventory';
-import { ProductResponse, Pageable, InventoryMovementResponse } from '@/types';
+import { ProductResponse, Pageable, StockMovementResponse } from '@/types';
 import { toast } from 'sonner';
 import { extractDataFromResponse } from '@/lib/utils/api-response';
 import { apiLogger } from '@/lib/utils/api-logger';
@@ -94,28 +94,24 @@ export function useProduct(id: string) {
 }
 
 export function useInventoryMovements(productId?: string, pageable?: Pageable) {
-  const [movements, setMovements] = useState<InventoryMovementResponse[]>([]);
+  const [movements, setMovements] = useState<StockMovementResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!productId) {
+      setLoading(false);
+      return;
+    }
+    // TODO: Implement getStockMovements method in inventoryApi
     const loadMovements = async () => {
       try {
         setLoading(true);
-        const response = await inventoryApi.getInventoryMovements(productId, pageable);
-        apiLogger.general({
-          endpoint: 'getInventoryMovements',
-          success: response.success,
-          params: { productId, pageable },
-          data: response.data,
-          error: response.success ? null : response,
-        });
-        if (response.success) {
-          const page = response.data as any;
-          setMovements(Array.isArray(page.content) ? page.content : []);
-        }
+        // const response = await inventoryApi.getStockMovements(productId, pageable);
+        // TODO: Implement when API method is available
+        setMovements([]);
       } catch (error) {
         apiLogger.general({
-          endpoint: 'getInventoryMovements',
+          endpoint: 'getStockMovements',
           success: false,
           params: { productId, pageable },
           error: error,
@@ -137,19 +133,13 @@ export function useStockAlerts() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // TODO: Implement getStockAlerts method in inventoryApi
     const loadAlerts = async () => {
       try {
         setLoading(true);
-        const response = await inventoryApi.getStockAlerts();
-        apiLogger.general({
-          endpoint: 'getStockAlerts',
-          success: response.success,
-          data: response.data,
-          error: response.success ? null : response,
-        });
-        if (response.success) {
-          setAlerts(response.data as any[]);
-        }
+        // const response = await inventoryApi.getStockAlerts();
+        // TODO: Implement when API method is available
+        setAlerts([]);
       } catch (error) {
         apiLogger.general({
           endpoint: 'getStockAlerts',
