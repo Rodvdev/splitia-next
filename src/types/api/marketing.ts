@@ -49,7 +49,7 @@ export interface UpdateCampaignRequest {
   scheduledAt?: string;
 }
 
-export interface WorkflowResponse {
+export interface MarketingWorkflowResponse {
   id: string;
   name: string;
   description?: string;
@@ -72,7 +72,7 @@ export interface WorkflowStep {
   nextSteps?: string[];
 }
 
-export interface CreateWorkflowRequest {
+export interface CreateMarketingWorkflowRequest {
   name: string;
   description?: string;
   trigger: WorkflowTrigger;

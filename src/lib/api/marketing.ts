@@ -6,8 +6,8 @@ import {
   CampaignResponse,
   CreateCampaignRequest,
   UpdateCampaignRequest,
-  WorkflowResponse,
-  CreateWorkflowRequest,
+  MarketingWorkflowResponse,
+  CreateMarketingWorkflowRequest,
   LandingPageResponse,
   CreateLandingPageRequest,
 } from '@/types';
@@ -46,25 +46,25 @@ export const marketingApi = {
   },
 
   // Workflows
-  getAllWorkflows: async (pageable?: Pageable): Promise<ApiResponse<Page<WorkflowResponse>>> => {
+  getAllWorkflows: async (pageable?: Pageable): Promise<ApiResponse<Page<MarketingWorkflowResponse>>> => {
     const response = await apiClient.instance.get('/admin/marketing/workflows', { params: pageable });
     apiLogger.general({ endpoint: 'getAllWorkflows', success: response.data.success, params: pageable, data: response.data });
     return response.data;
   },
 
-  getWorkflowById: async (id: string): Promise<ApiResponse<WorkflowResponse>> => {
+  getWorkflowById: async (id: string): Promise<ApiResponse<MarketingWorkflowResponse>> => {
     const response = await apiClient.instance.get(`/admin/marketing/workflows/${id}`);
     apiLogger.general({ endpoint: 'getWorkflowById', success: response.data.success, params: { id }, data: response.data });
     return response.data;
   },
 
-  createWorkflow: async (data: CreateWorkflowRequest): Promise<ApiResponse<WorkflowResponse>> => {
+  createWorkflow: async (data: CreateMarketingWorkflowRequest): Promise<ApiResponse<MarketingWorkflowResponse>> => {
     const response = await apiClient.instance.post('/admin/marketing/workflows', data);
     apiLogger.general({ endpoint: 'createWorkflow', success: response.data.success, params: { data }, data: response.data });
     return response.data;
   },
 
-  updateWorkflow: async (id: string, data: Partial<CreateWorkflowRequest>): Promise<ApiResponse<WorkflowResponse>> => {
+  updateWorkflow: async (id: string, data: Partial<CreateMarketingWorkflowRequest>): Promise<ApiResponse<MarketingWorkflowResponse>> => {
     const response = await apiClient.instance.put(`/admin/marketing/workflows/${id}`, data);
     apiLogger.general({ endpoint: 'updateWorkflow', success: response.data.success, params: { id, data }, data: response.data });
     return response.data;
