@@ -11,9 +11,8 @@ import {
   getIconsByCategory, 
   type IconItem, 
   type IconType,
-  type LucideIcon 
 } from '@/lib/utils/icons';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface IconSelectorProps {
