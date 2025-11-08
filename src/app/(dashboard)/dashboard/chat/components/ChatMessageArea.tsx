@@ -44,56 +44,99 @@ export function ChatMessageArea({ conversation, groupName }: ChatMessageAreaProp
 
   // Suscripción a WebSocket para recibir mensajes en tiempo real
   useEffect(() => {
-    if (!connected) return;
+    if (!connected || !conversation?.id) return;
 
-    const unsubscribe = subscribe(WS_CHANNELS.SUPPORT_MESSAGES, (wsMessage) => {
-      const { type, action, data } = wsMessage;
-      
-      if (type === 'MESSAGE_CREATED' || type === 'MESSAGE_RECEIVED' || action === 'CREATED') {
-        const message = data.message || data as MessageResponse;
+    // Suscribirse a múltiples canales posibles
+    const channels = [
+      WS_CHANNELS.CHAT_MESSAGES,
+      WS_CHANNELS.SUPPORT_MESSAGES,
+      WS_CHANNELS.CONVERSATIONS,
+      WS_CHANNELS.CONVERSATION_MESSAGES(conversation.id),
+    ];
+
+    const unsubscribes = channels.map((channel) =>
+      subscribe(channel, (wsMessage) => {
+        console.log(`📨 Mensaje recibido en ${channel}:`, wsMessage);
+        const { type, action, data, entityType } = wsMessage;
         
-        if (!message) return;
+        // Extraer el mensaje de diferentes formatos posibles
+        let message: MessageResponse | null = null;
+        
+        // Formato 1: data.message
+        if (data?.message) {
+          message = data.message as MessageResponse;
+        }
+        // Formato 2: data directamente es el mensaje
+        else if (data && typeof data === 'object' && 'content' in data && 'sender' in data) {
+          message = data as MessageResponse;
+        }
+        // Formato 3: data.data.message
+        else if (data?.data?.message) {
+          message = data.data.message as MessageResponse;
+        }
+        
+        if (!message) {
+          console.warn('⚠️ No se pudo extraer el mensaje del WebSocket:', wsMessage);
+          return;
+        }
 
-        // Solo agregar si pertenece a la conversación actual
-        if (conversation?.id && (!message.conversationId || message.conversationId === conversation.id)) {
-          setMessages((prev) => {
-            // Evitar duplicados
-            if (prev.some((m) => m.id === message.id)) {
-              return prev;
-            }
-            return [...prev, message];
-          });
+        // Asegurar que el mensaje tenga conversationId
+        if (!message.conversationId && conversation?.id) {
+          message.conversationId = conversation.id;
+        }
 
-          // Scroll al final si es un mensaje nuevo
-          setTimeout(() => {
-            const messagesEnd = document.querySelector('[data-messages-end]');
-            messagesEnd?.scrollIntoView({ behavior: 'smooth' });
-          }, 100);
-        } else if (message.conversationId && message.conversationId !== conversation?.id) {
-          // Notificación para mensajes de otras conversaciones
-          const isOwnMessage = user?.id === message.sender?.id;
-          if (!isOwnMessage) {
-            toast.info(`Nuevo mensaje en ${groupName || 'otro grupo'}`, {
-              description: `${message.sender?.name || 'Usuario'}: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`,
+        // Manejar diferentes tipos de eventos
+        if (
+          type === 'MESSAGE_CREATED' ||
+          type === 'MESSAGE_RECEIVED' ||
+          action === 'CREATED' ||
+          entityType === 'Message' ||
+          (type === 'MESSAGE' && action === 'CREATED')
+        ) {
+          // Solo agregar si pertenece a la conversación actual
+          if (message.conversationId === conversation.id) {
+            setMessages((prev) => {
+              // Evitar duplicados
+              if (prev.some((m) => m.id === message!.id)) {
+                console.log('⚠️ Mensaje duplicado ignorado:', message.id);
+                return prev;
+              }
+              console.log('✅ Agregando mensaje nuevo:', message);
+              return [...prev, message];
             });
+
+            // Scroll al final si es un mensaje nuevo
+            setTimeout(() => {
+              const messagesEnd = document.querySelector('[data-messages-end]');
+              messagesEnd?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+          } else if (message.conversationId && message.conversationId !== conversation.id) {
+            // Notificación para mensajes de otras conversaciones
+            const isOwnMessage = user?.id === message.sender?.id;
+            if (!isOwnMessage) {
+              toast.info(`Nuevo mensaje en ${groupName || 'otro grupo'}`, {
+                description: `${message.sender?.name || 'Usuario'}: ${message.content?.substring(0, 50) || ''}${message.content && message.content.length > 50 ? '...' : ''}`,
+              });
+            }
+          }
+        } else if (type === 'MESSAGE_UPDATED' || action === 'UPDATED') {
+          if (message.conversationId === conversation.id) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === message.id ? message : m))
+            );
+          }
+        } else if (type === 'MESSAGE_DELETED' || action === 'DELETED') {
+          const messageId = message.id || data.id || wsMessage.entityId;
+          if (messageId) {
+            setMessages((prev) => prev.filter((m) => m.id !== messageId));
           }
         }
-      } else if (type === 'MESSAGE_UPDATED' || action === 'UPDATED') {
-        const message = data.message || data as MessageResponse;
-        if (message && message.conversationId === conversation?.id) {
-          setMessages((prev) =>
-            prev.map((m) => (m.id === message.id ? message : m))
-          );
-        }
-      } else if (type === 'MESSAGE_DELETED' || action === 'DELETED') {
-        const messageId = data.id || wsMessage.entityId;
-        if (messageId) {
-          setMessages((prev) => prev.filter((m) => m.id !== messageId));
-        }
-      }
-    });
+      })
+    );
 
-    return unsubscribe;
+    return () => {
+      unsubscribes.forEach((unsub) => unsub());
+    };
   }, [subscribe, connected, conversation?.id, groupName, user?.id]);
 
   const loadMessages = async (page: number = 0, reset: boolean = false) => {

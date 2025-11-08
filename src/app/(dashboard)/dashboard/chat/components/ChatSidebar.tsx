@@ -40,12 +40,37 @@ export function ChatSidebar({ selectedConversationId, onSelectConversation }: Ch
   useEffect(() => {
     if (!connected) return;
 
-    const unsubscribe = subscribe(WS_CHANNELS.SUPPORT_MESSAGES, (wsMessage) => {
-      const { type, action, data } = wsMessage;
-      
-      if (type === 'MESSAGE_CREATED' || type === 'MESSAGE_RECEIVED' || action === 'CREATED') {
-        const message = data.message || data;
-        if (message && message.conversationId) {
+    // Suscribirse a múltiples canales posibles
+    const channels = [
+      WS_CHANNELS.CHAT_MESSAGES,
+      WS_CHANNELS.SUPPORT_MESSAGES,
+      WS_CHANNELS.CONVERSATIONS,
+    ];
+
+    const unsubscribes = channels.map((channel) =>
+      subscribe(channel, (wsMessage) => {
+        const { type, action, data, entityType } = wsMessage;
+        
+        // Extraer el mensaje de diferentes formatos posibles
+        let message: any = null;
+        
+        if (data?.message) {
+          message = data.message;
+        } else if (data && typeof data === 'object' && 'content' in data && 'sender' in data) {
+          message = data;
+        } else if (data?.data?.message) {
+          message = data.data.message;
+        }
+        
+        if (
+          message &&
+          message.conversationId &&
+          (type === 'MESSAGE_CREATED' ||
+            type === 'MESSAGE_RECEIVED' ||
+            action === 'CREATED' ||
+            entityType === 'Message' ||
+            (type === 'MESSAGE' && action === 'CREATED'))
+        ) {
           // Actualizar último mensaje en la conversación correspondiente
           setGroupsWithConversations((prev) =>
             prev.map((item) => {
@@ -63,10 +88,12 @@ export function ChatSidebar({ selectedConversationId, onSelectConversation }: Ch
             })
           );
         }
-      }
-    });
+      })
+    );
 
-    return unsubscribe;
+    return () => {
+      unsubscribes.forEach((unsub) => unsub());
+    };
   }, [subscribe, connected]);
 
   const loadGroupsAndConversations = async () => {

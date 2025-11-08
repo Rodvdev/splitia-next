@@ -251,20 +251,40 @@ class WebSocketService {
     const subscription = this.client.subscribe(destination, (message: IMessage) => {
       try {
         const data = JSON.parse(message.body);
+        
+        // Log para depuración
+        console.log(`📨 Mensaje WebSocket recibido en ${destination}:`, data);
+        
+        // Manejar diferentes formatos de mensaje del backend
+        // Formato 1: Estructura estándar WebSocketMessage
+        // Formato 2: Mensaje directo (para chat)
+        // Formato 3: Mensaje dentro de data.message o data.data
+        
+        let normalizedData = data;
+        
+        // Si el mensaje está dentro de data.message o data.data, extraerlo
+        if (data.data?.message) {
+          normalizedData = { ...data, data: { ...data.data, message: data.data.message } };
+        } else if (data.message && typeof data.message === 'object') {
+          // El mensaje completo está en data.message
+          normalizedData = { ...data, data: { message: data.message, ...data.data } };
+        }
+        
         // Normalizar mensaje según estructura del backend
         callback({
-          type: data.type || 'MESSAGE',
-          module: data.module || 'UNKNOWN',
-          action: data.action || 'UNKNOWN',
-          entityId: data.entityId || null,
-          entityType: data.entityType || 'UNKNOWN',
-          data: data.data || {},
-          userId: data.userId || null,
-          timestamp: data.timestamp || new Date().toISOString(),
-          message: data.message || null,
+          type: normalizedData.type || data.type || 'MESSAGE',
+          module: normalizedData.module || data.module || 'UNKNOWN',
+          action: normalizedData.action || data.action || 'UNKNOWN',
+          entityId: normalizedData.entityId || data.entityId || null,
+          entityType: normalizedData.entityType || data.entityType || 'UNKNOWN',
+          data: normalizedData.data || data.data || data || {},
+          userId: normalizedData.userId || data.userId || null,
+          timestamp: normalizedData.timestamp || data.timestamp || new Date().toISOString(),
+          message: normalizedData.message || data.message || null,
         });
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        console.error('❌ Error parsing WebSocket message:', error);
+        console.error('Raw message body:', message.body);
         callback({
           type: 'ERROR',
           module: 'SYSTEM',
@@ -340,6 +360,11 @@ export const WS_CHANNELS = {
   // Support
   SUPPORT_TICKETS: '/topic/support/tickets',
   SUPPORT_MESSAGES: '/topic/support/messages',
+  
+  // Chat / Conversations
+  CHAT_MESSAGES: '/topic/chat/messages',
+  CONVERSATIONS: '/topic/conversations',
+  CONVERSATION_MESSAGES: (conversationId: string) => `/topic/conversations/${conversationId}/messages`,
   
   // Finance
   FINANCE_INVOICES: '/topic/finance/invoices',
