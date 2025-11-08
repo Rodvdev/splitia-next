@@ -61,8 +61,8 @@ export default function AdminAuditLogsPage() {
         data: response.data,
         error: response.success ? null : response,
       });
-      const pageData = extractDataFromResponse(response);
-      setLogs(pageData.content || []);
+      const logsData = extractDataFromResponse(response);
+      setLogs(logsData);
     } catch (error) {
       apiLogger.general({
         endpoint: 'getAllAuditLogs',

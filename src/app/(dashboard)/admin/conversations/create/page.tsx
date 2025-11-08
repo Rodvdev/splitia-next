@@ -18,7 +18,7 @@ import { apiLogger } from '@/lib/utils/api-logger';
 
 const createConversationSchema = z.object({
   name: z.string().optional(),
-  userIds: z.string().min(1, 'Debe incluir al menos un ID de usuario').transform((val) => val.split(',').map(id => id.trim()).filter(Boolean)),
+  participantIds: z.string().min(1, 'Debe incluir al menos un ID de usuario').transform((val) => val.split(',').map(id => id.trim()).filter(Boolean)),
 });
 
 type CreateConversationFormData = z.infer<typeof createConversationSchema>;
@@ -38,7 +38,7 @@ export default function CreateConversationPage() {
     setIsLoading(true);
     const request: CreateConversationRequest = {
       name: data.name,
-      userIds: Array.isArray(data.userIds) ? data.userIds : [data.userIds],
+      participantIds: Array.isArray(data.participantIds) ? data.participantIds : [data.participantIds],
     };
     try {
       const response = await adminApi.createConversation(request);
@@ -91,9 +91,9 @@ export default function CreateConversationPage() {
               <Input id="name" placeholder="Nombre de la conversación" {...register('name')} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="userIds">IDs de Usuarios (separados por comas)</Label>
-              <Input id="userIds" placeholder="id1, id2, id3" {...register('userIds')} />
-              {errors.userIds && <p className="text-sm text-destructive">{errors.userIds.message}</p>}
+              <Label htmlFor="participantIds">IDs de Participantes (separados por comas)</Label>
+              <Input id="participantIds" placeholder="id1, id2, id3" {...register('participantIds')} />
+              {errors.participantIds && <p className="text-sm text-destructive">{errors.participantIds.message}</p>}
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={isLoading}>

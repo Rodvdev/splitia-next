@@ -1,7 +1,6 @@
 'use client';
 
 import { EmptyState } from '@/components/common/EmptyState';
-import { Activity } from 'lucide-react';
 
 export default function UsersActivityTab() {
   // TODO: Implement activity tracking/logging system
@@ -12,7 +11,6 @@ export default function UsersActivityTab() {
       <EmptyState
         title="Actividad de Usuarios"
         description="El sistema de seguimiento de actividad estará disponible próximamente. Aquí se mostrará el historial de acciones, inicios de sesión y actividad reciente de los usuarios."
-        icon={Activity}
       />
     </div>
   );

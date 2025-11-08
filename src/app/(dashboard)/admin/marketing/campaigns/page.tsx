@@ -32,7 +32,7 @@ export default function MarketingCampaignsPage() {
   const { subscribe, connected } = useWebSocket();
 
   useEffect(() => {
-    refetch({ page: 0, size: 50, search: searchTerm || undefined });
+    refetch({ page: 0, size: 50 });
   }, [searchTerm, refetch]);
 
   // Suscripción a actualizaciones en tiempo real
@@ -40,10 +40,10 @@ export default function MarketingCampaignsPage() {
     if (!connected) return;
 
     const unsubscribe = subscribe('/topic/marketing/campaigns', (message) => {
-      const { type, payload } = message;
+      const { type, data } = message;
       
       if (type === 'CAMPAIGN_CREATED' || type === 'CAMPAIGN_UPDATED') {
-        const campaign = payload as CampaignResponse;
+        const campaign = data as CampaignResponse;
         refetch();
         if (type === 'CAMPAIGN_CREATED') {
           toast.success(`Nueva campaña: ${campaign.name}`);

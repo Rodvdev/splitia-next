@@ -85,7 +85,7 @@ export default function AdminContactsPage() {
         error: response.success ? null : response,
       });
       const pageData = extractDataFromResponse(response);
-      setContacts(pageData.content || []);
+      setContacts(pageData as ContactResponse[] || []);
     } catch (error) {
       apiLogger.general({
         endpoint: 'getAllContacts',

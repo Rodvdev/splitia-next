@@ -63,7 +63,7 @@ export default function NewSupportTicketPage() {
       title: data.title,
       description: data.description,
       category: data.category,
-      priority: data.priority && data.priority !== '' ? data.priority : undefined,
+      priority: data.priority || undefined,
     };
     try {
       const response = await supportApi.create(request);

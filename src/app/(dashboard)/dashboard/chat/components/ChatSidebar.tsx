@@ -152,11 +152,53 @@ export function ChatSidebar({ selectedConversationId, onSelectConversation }: Ch
     );
   }, [groupsWithConversations, searchTerm]);
 
-  const handleSelectGroup = (item: GroupWithConversation) => {
+  const handleSelectGroup = async (item: GroupWithConversation) => {
+    // Si no existe conversación, crearla automáticamente
     if (!item.conversation) {
-      toast.error('No se pudo cargar la conversación del grupo');
+      try {
+        // Mostrar loading en el item
+        setGroupsWithConversations((prev) =>
+          prev.map((g) =>
+            g.group.id === item.group.id ? { ...g, isLoading: true } : g
+          )
+        );
+
+        const convResponse = await chatApi.getOrCreateGroupConversation(item.group.id);
+        
+        if (convResponse.success && convResponse.data) {
+          // Actualizar el estado con la nueva conversación
+          setGroupsWithConversations((prev) =>
+            prev.map((g) =>
+              g.group.id === item.group.id
+                ? { ...g, conversation: convResponse.data, isLoading: false }
+                : g
+            )
+          );
+          
+          // Seleccionar la conversación recién creada
+          onSelectConversation(convResponse.data, item.group);
+          toast.success('Conversación iniciada');
+        } else {
+          toast.error('No se pudo crear la conversación del grupo');
+          setGroupsWithConversations((prev) =>
+            prev.map((g) =>
+              g.group.id === item.group.id ? { ...g, isLoading: false } : g
+            )
+          );
+        }
+      } catch (error) {
+        console.error('Error creating conversation:', error);
+        toast.error('Error al crear la conversación');
+        setGroupsWithConversations((prev) =>
+          prev.map((g) =>
+            g.group.id === item.group.id ? { ...g, isLoading: false } : g
+          )
+        );
+      }
       return;
     }
+    
+    // Si ya existe, seleccionarla normalmente
     onSelectConversation(item.conversation, item.group);
   };
 

@@ -96,7 +96,7 @@ export function MessageList({
         {hasMore && (
           <div className="flex justify-center py-2">
             {isLoading ? (
-              <LoadingSpinner size="sm" />
+              <LoadingSpinner />
             ) : (
               <button
                 onClick={onLoadMore}

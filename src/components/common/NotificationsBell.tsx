@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils/cn';
 export function NotificationsBell() {
   const { notifications, connected } = useNotifications();
 
-  const unreadCount = notifications.filter((n) => !n.payload?.read).length;
+  const unreadCount = notifications.filter((n) => !n.data?.read).length;
 
   return (
     <Popover>
@@ -56,20 +56,20 @@ export function NotificationsBell() {
                   key={index}
                   className={cn(
                     'p-4 hover:bg-muted/50 transition-colors cursor-pointer',
-                    !notification.payload?.read && 'bg-muted/30'
+                    !notification.data?.read && 'bg-muted/30'
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{notification.payload?.title || notification.type}</p>
+                      <p className="text-sm font-medium">{notification.data?.title || notification.type}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {notification.payload?.message || JSON.stringify(notification.payload)}
+                        {notification.data?.message || JSON.stringify(notification.data)}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatRelativeTime(notification.timestamp)}
                       </p>
                     </div>
-                    {!notification.payload?.read && (
+                    {!notification.data?.read && (
                       <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
                     )}
                   </div>

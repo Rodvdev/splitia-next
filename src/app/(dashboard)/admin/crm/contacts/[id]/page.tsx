@@ -108,7 +108,7 @@ export default function ContactDetailPage() {
           </Link>
           <div>
             <h1 className="text-3xl font-bold">
-              {contact.name} {contact.lastName || ''}
+              {contact.firstName} {contact.lastName || ''}
             </h1>
             <p className="text-muted-foreground">Detalle del contacto</p>
           </div>
@@ -157,7 +157,8 @@ export default function ContactDetailPage() {
                     </p>
                   </div>
                 )}
-                {contact.company && (
+                </div>
+                {/* {contact.company && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Empresa</label>
                     <p className="mt-1 flex items-center gap-2">
@@ -218,7 +219,7 @@ export default function ContactDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">Notas</label>
                   <p className="mt-1 whitespace-pre-wrap">{contact.notes}</p>
                 </div>
-              )}
+              )} */}
             </CardContent>
           </Card>
         </TabsContent>

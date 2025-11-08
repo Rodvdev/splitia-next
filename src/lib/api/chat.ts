@@ -19,8 +19,15 @@ export const chatApi = {
     conversationId: string,
     pageable?: Pageable
   ): Promise<ApiResponse<Page<MessageResponse>>> => {
+    // Convertir sort array a string si es necesario (Spring Boot espera string)
+    const params: any = { ...pageable };
+    if (params.sort && Array.isArray(params.sort)) {
+      params.sort = params.sort.join(',');
+    } else if (!params.sort) {
+      params.sort = 'createdAt,desc';
+    }
     const response = await apiClient.instance.get(`/conversations/${conversationId}/messages`, {
-      params: pageable,
+      params,
     });
     return response.data;
   },
@@ -33,27 +40,33 @@ export const chatApi = {
   },
 
   updateMessage: async (
-    conversationId: string,
     messageId: string,
     data: UpdateMessageRequest
   ): Promise<ApiResponse<MessageResponse>> => {
     const response = await apiClient.instance.put(
-      `/conversations/${conversationId}/messages/${messageId}`,
+      `/conversations/messages/${messageId}`,
       data
     );
     return response.data;
   },
 
-  deleteMessage: async (conversationId: string, messageId: string): Promise<ApiResponse<void>> => {
+  deleteMessage: async (messageId: string): Promise<ApiResponse<void>> => {
     const response = await apiClient.instance.delete(
-      `/conversations/${conversationId}/messages/${messageId}`
+      `/conversations/messages/${messageId}`
     );
     return response.data;
   },
 
   // Conversations
   getConversations: async (pageable?: Pageable): Promise<ApiResponse<Page<ConversationResponse>>> => {
-    const response = await apiClient.instance.get('/conversations', { params: pageable });
+    // Convertir sort array a string si es necesario (Spring Boot espera string)
+    const params: any = { ...pageable };
+    if (params.sort && Array.isArray(params.sort)) {
+      params.sort = params.sort.join(',');
+    } else if (!params.sort) {
+      params.sort = 'createdAt,desc';
+    }
+    const response = await apiClient.instance.get('/conversations', { params });
     return response.data;
   },
 
@@ -85,6 +98,11 @@ export const chatApi = {
   /**
    * Obtiene o crea una conversación para un grupo
    * Si la conversación ya existe, la retorna. Si no, crea una nueva.
+   * 
+   * Estrategia:
+   * 1. Si el grupo tiene conversationId, obtener la conversación directamente
+   * 2. Si no, buscar en la lista de conversaciones por groupId
+   * 3. Si no existe, crear una nueva conversación
    */
   getOrCreateGroupConversation: async (groupId: string): Promise<ApiResponse<ConversationResponse>> => {
     try {
@@ -95,35 +113,55 @@ export const chatApi = {
       }
       const group = groupResponse.data;
 
-      // 2. Obtener userIds de los miembros
-      const userIds = getGroupMemberUserIds(group);
+      // 2. Opción 1: Si el grupo tiene conversationId, obtener la conversación directamente (más eficiente)
+      if (group.conversationId) {
+        const conversationResponse = await chatApi.getConversationById(group.conversationId);
+        if (conversationResponse.success && conversationResponse.data) {
+          return conversationResponse;
+        }
+      }
 
-      // 3. Buscar conversaciones existentes del usuario
+      // 3. Opción 2: Buscar conversación por groupId en la lista de conversaciones
       const conversationsResponse = await chatApi.getConversations({ page: 0, size: 100 });
       if (conversationsResponse.success && conversationsResponse.data) {
         const conversations = Array.isArray(conversationsResponse.data.content)
           ? conversationsResponse.data.content
           : [];
 
-        // Buscar conversación que coincida con los miembros del grupo
-        const existingConversation = conversations.find((conv) =>
-          conversationMatchesGroup(conv, group)
+        // Buscar conversación que tenga el groupId coincidente
+        const existingConversation = conversations.find(
+          (conv) => conv.groupId === groupId
         );
 
         if (existingConversation) {
           return {
             success: true,
             data: existingConversation,
-            message: 'Conversation found',
+            message: 'Conversation found by groupId',
+            timestamp: new Date().toISOString(),
+          };
+        }
+
+        // Opción 3: Fallback - buscar por coincidencia de miembros (método antiguo)
+        const conversationByMembers = conversations.find((conv) =>
+          conversationMatchesGroup(conv, group)
+        );
+
+        if (conversationByMembers) {
+          return {
+            success: true,
+            data: conversationByMembers,
+            message: 'Conversation found by members',
             timestamp: new Date().toISOString(),
           };
         }
       }
 
       // 4. Si no existe, crear nueva conversación
+      const userIds = getGroupMemberUserIds(group);
       const createResponse = await chatApi.createConversation({
         name: group.name,
-        userIds: userIds,
+        participantIds: userIds,
       });
 
       return createResponse;

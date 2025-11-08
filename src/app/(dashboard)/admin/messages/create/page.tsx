@@ -36,10 +36,27 @@ export default function CreateMessagePage() {
 
   const onSubmit = async (data: CreateMessageFormData) => {
     setIsLoading(true);
+    // Trim and validate before sending
+    const conversationId = data.conversationId?.trim();
+    const content = data.content?.trim();
+    
+    if (!conversationId || conversationId === '') {
+      toast.error('El ID de conversación es requerido');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!content || content === '') {
+      toast.error('El contenido es requerido');
+      setIsLoading(false);
+      return;
+    }
+    
     const request: SendMessageRequest = {
-      conversationId: data.conversationId,
-      content: data.content,
+      conversationId,
+      content,
     };
+    
     try {
       const response = await adminApi.createMessage(request);
       apiLogger.messages({
@@ -52,6 +69,8 @@ export default function CreateMessagePage() {
       if (response.success) {
         toast.success('Mensaje creado exitosamente');
         router.push('/admin/messages');
+      } else {
+        toast.error(response.message || 'Error al crear el mensaje');
       }
     } catch (error: any) {
       apiLogger.messages({
@@ -60,7 +79,9 @@ export default function CreateMessagePage() {
         params: { request },
         error: error,
       });
-      toast.error(error.response?.data?.message || 'Error al crear el mensaje');
+      const errorMessage = error.response?.data?.message || error.message || 'Error al crear el mensaje';
+      toast.error(errorMessage);
+      console.error('Error creating message:', error);
     } finally {
       setIsLoading(false);
     }

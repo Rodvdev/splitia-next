@@ -94,7 +94,7 @@ export default function AdminInvoicesPage() {
         error: response.success ? null : response,
       });
       const pageData = extractDataFromResponse(response);
-      setInvoices(pageData.content || []);
+      setInvoices(pageData as InvoiceResponse[] || []);
     } catch (error) {
       apiLogger.general({
         endpoint: 'getAllInvoices',

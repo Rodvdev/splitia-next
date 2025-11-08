@@ -116,7 +116,8 @@ export function ChatMessageArea({ conversation, groupName }: ChatMessageAreaProp
       });
 
       if (response.success && response.data) {
-        const pageData = extractDataFromResponse(response);
+        // response.data es Page<MessageResponse>, necesitamos extraer el contenido
+        const pageData = response.data;
         const newMessages = Array.isArray(pageData.content) ? pageData.content : [];
         
         // Invertir orden para mostrar más antiguos arriba y más recientes abajo
@@ -229,7 +230,7 @@ export function ChatMessageArea({ conversation, groupName }: ChatMessageAreaProp
   }
 
   const displayName = groupName || conversation.name || 'Grupo sin nombre';
-  const memberCount = conversation.members?.length || 0;
+  const participantCount = conversation.participants?.length || 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -242,7 +243,7 @@ export function ChatMessageArea({ conversation, groupName }: ChatMessageAreaProp
           <div>
             <h2 className="font-semibold">{displayName}</h2>
             <p className="text-xs text-muted-foreground">
-              {memberCount} {memberCount === 1 ? 'miembro' : 'miembros'}
+              {participantCount} {participantCount === 1 ? 'participante' : 'participantes'}
             </p>
           </div>
         </div>

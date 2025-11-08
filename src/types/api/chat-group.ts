@@ -24,22 +24,28 @@ export interface GroupConversation {
 
 /**
  * Helper para verificar si una conversación pertenece a un grupo
- * basándose en los miembros
+ * Usa groupId si está disponible, sino verifica por coincidencia de participantes
  */
 export function conversationMatchesGroup(
   conversation: ConversationResponse,
   group: GroupResponse
 ): boolean {
-  if (conversation.type !== 'GROUP') {
+  if (!conversation.isGroupChat) {
     return false;
   }
 
+  // Método más eficiente: verificar por groupId si está disponible
+  if (conversation.groupId && conversation.groupId === group.id) {
+    return true;
+  }
+
+  // Fallback: verificar por coincidencia de participantes
   const groupUserIds = getGroupMemberUserIds(group);
-  const conversationUserIds = conversation.members
-    ?.map((member) => member.id)
+  const conversationUserIds = conversation.participants
+    ?.map((participant) => participant.id)
     .filter(Boolean) || [];
 
-  // Verificar que tengan la misma cantidad de miembros
+  // Verificar que tengan la misma cantidad de participantes
   if (groupUserIds.length !== conversationUserIds.length) {
     return false;
   }

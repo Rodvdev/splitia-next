@@ -101,15 +101,20 @@ export const contactsApi = {
 
   // Companies
   getAllCompanies: async (
-    pageable?: Pageable
+    pageable?: Pageable,
+    search?: string
   ): Promise<ApiResponse<Page<CompanyResponse>>> => {
     apiLogger.general({
       endpoint: 'GET /admin/contacts/companies',
       success: true,
-      params: pageable,
+      params: { ...pageable, search },
     });
+    const params: any = { ...pageable };
+    if (search) {
+      params.search = search;
+    }
     const response = await apiClient.instance.get('/admin/contacts/companies', {
-      params: pageable,
+      params,
     });
     apiLogger.general({
       endpoint: 'GET /admin/contacts/companies',

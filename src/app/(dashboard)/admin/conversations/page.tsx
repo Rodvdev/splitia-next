@@ -50,9 +50,9 @@ export default function AdminConversationsPage() {
   };
 
   const filteredConversations = conversations.filter((conversation) => {
-    const members = Array.isArray(conversation.members) ? conversation.members : [];
+    const participants = Array.isArray(conversation.participants) ? conversation.participants : [];
     const term = (searchTerm || '').toLowerCase();
-    return members.some((p) => {
+    return participants.some((p) => {
       const name = (p?.name || '').toLowerCase();
       const email = (p?.email || '').toLowerCase();
       return name.includes(term) || email.includes(term);
@@ -130,14 +130,14 @@ export default function AdminConversationsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
-                            {conversation.members.slice(0, 3).map((participant) => (
+                            {conversation.participants.slice(0, 3).map((participant) => (
                               <Badge key={participant.id} variant="outline" className="text-xs">
                                 {participant.name} {participant.lastName}
                               </Badge>
                             ))}
-                            {conversation.members.length > 3 && (
+                            {conversation.participants.length > 3 && (
                               <Badge variant="outline" className="text-xs">
-                                +{conversation.members.length - 3} más
+                                +{conversation.participants.length - 3} más
                               </Badge>
                             )}
                           </div>
@@ -146,7 +146,7 @@ export default function AdminConversationsPage() {
                           {formatDate(conversation.createdAt, 'PP', 'es')}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {formatDate(conversation.updatedAt, 'PP', 'es')}
+                          {conversation.updatedAt ? formatDate(conversation.updatedAt, 'PP', 'es') : '-'}
                         </td>
                         <td className="px-4 py-3">
                           <Link href={`/admin/conversations/${conversation.id}`}>

@@ -36,11 +36,13 @@ export default function AdminCompaniesPage() {
   const loadCompanies = async () => {
     try {
       setLoading(true);
-      const response = await contactsApi.getAllCompanies({
-        page: 0,
-        size: 50,
-        search: searchTerm || undefined,
-      });
+      const response = await contactsApi.getAllCompanies(
+        {
+          page: 0,
+          size: 50,
+        },
+        searchTerm || undefined
+      );
       apiLogger.sales({
         endpoint: 'getAllCompanies',
         success: response.success,
@@ -131,7 +133,7 @@ export default function AdminCompaniesPage() {
     <span key={`${company.id}-email`}>{company.email || '-'}</span>,
     <span key={`${company.id}-phone`}>{company.phone || '-'}</span>,
     <span key={`${company.id}-industry`}>{company.industry || '-'}</span>,
-    <span key={`${company.id}-employees`}>{company.employees?.toLocaleString() || '-'}</span>,
+    <span key={`${company.id}-size`}>{company.size || '-'}</span>,
     <span key={`${company.id}-date`}>{formatDate(company.createdAt, 'dd/MM/yyyy')}</span>,
     <DropdownMenu key={`${company.id}-actions`}>
       <DropdownMenuTrigger asChild>
