@@ -9,6 +9,7 @@ import { adminApi } from '@/lib/api/admin';
 import { GroupInvitationResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { Search, MoreVertical, UserPlus, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
@@ -18,6 +19,7 @@ import { extractDataFromResponse } from '@/lib/utils/api-response';
 export default function AdminGroupInvitationsPage() {
   const [invitations, setInvitations] = useState<GroupInvitationResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -27,6 +29,7 @@ export default function AdminGroupInvitationsPage() {
   const loadInvitations = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await adminApi.getAllGroupInvitations({ page: 0, size: 50 });
       apiLogger.general({
         endpoint: 'getAllGroupInvitations',
@@ -36,14 +39,23 @@ export default function AdminGroupInvitationsPage() {
         error: response.success ? null : response,
       });
       setInvitations(extractDataFromResponse(response));
-    } catch (error) {
+    } catch (err: any) {
       apiLogger.general({
         endpoint: 'getAllGroupInvitations',
         success: false,
         params: { page: 0, size: 50 },
-        error: error,
+        error: err,
       });
-      console.error('Error loading group invitations:', error);
+      
+      const status = err?.response?.status;
+      if (status === 403) {
+        setError('No tienes permisos para acceder a las invitaciones de grupos. Contacta con un administrador si necesitas acceso.');
+      } else if (status === 401) {
+        setError('Sesión expirada. Por favor, inicia sesión nuevamente.');
+      } else {
+        setError(err?.response?.data?.message || 'Error al cargar las invitaciones de grupos');
+      }
+      console.error('Error loading group invitations:', err);
     } finally {
       setLoading(false);
     }
@@ -87,6 +99,20 @@ export default function AdminGroupInvitationsPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Invitaciones a Grupos</h1>
+            <p className="text-muted-foreground">Gestiona todas las invitaciones a grupos</p>
+          </div>
+        </div>
+        <ErrorMessage message={error} />
       </div>
     );
   }
@@ -149,12 +175,12 @@ export default function AdminGroupInvitationsPage() {
                               <UserPlus className="h-5 w-5 text-primary" />
                             </div>
                             <div>
-                              <p className="font-medium">{invitation.group.name}</p>
+                              <p className="font-medium">{invitation.group?.name || 'N/A'}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          {invitation.invitedBy.name} {invitation.invitedBy.lastName}
+                          {invitation.invitedBy?.name || 'N/A'} {invitation.invitedBy?.lastName || ''}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           {invitation.invitedUser ? (

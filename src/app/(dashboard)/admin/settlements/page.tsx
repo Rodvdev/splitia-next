@@ -19,6 +19,7 @@ export default function AdminSettlementsPage() {
   const [settlements, setSettlements] = useState<SettlementResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadSettlements();
@@ -27,6 +28,7 @@ export default function AdminSettlementsPage() {
   const loadSettlements = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await adminApi.getAllSettlements({ page: 0, size: 50 });
       apiLogger.settlements({
         endpoint: 'getAllSettlements',
@@ -35,15 +37,35 @@ export default function AdminSettlementsPage() {
         data: response.data,
         error: response.success ? null : response,
       });
+      
+      if (!response.success) {
+        const status = (response as any).status || (response as any).response?.status;
+        if (status === 403) {
+          setError('No tienes permisos para acceder a las liquidaciones. Contacta con un administrador si necesitas acceso.');
+        } else {
+          setError((response as any).message || 'Error al cargar las liquidaciones');
+        }
+        return;
+      }
+      
       setSettlements(extractDataFromResponse(response));
-    } catch (error) {
+    } catch (err: any) {
       apiLogger.settlements({
         endpoint: 'getAllSettlements',
         success: false,
         params: { page: 0, size: 50 },
-        error: error,
+        error: err,
       });
-      console.error('Error loading settlements:', error);
+      
+      const status = err?.response?.status;
+      if (status === 403) {
+        setError('No tienes permisos para acceder a las liquidaciones. Contacta con un administrador si necesitas acceso.');
+      } else if (status === 401) {
+        setError('Sesión expirada. Por favor, inicia sesión nuevamente.');
+      } else {
+        setError(err?.response?.data?.message || 'Error al cargar las liquidaciones');
+      }
+      console.error('Error loading settlements:', err);
     } finally {
       setLoading(false);
     }
@@ -90,6 +112,27 @@ export default function AdminSettlementsPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Liquidaciones</h1>
+            <p className="text-muted-foreground">Gestiona todas las liquidaciones del sistema</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <EmptyState
+              title="Error al cargar liquidaciones"
+              description={error}
+            />
+          </CardContent>
+        </Card>
       </div>
     );
   }

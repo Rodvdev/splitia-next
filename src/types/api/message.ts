@@ -5,6 +5,7 @@ export interface MessageResponse {
   content: string;
   isAI: boolean;
   sender: UserResponse;
+  conversationId?: string; // ID de la conversación a la que pertenece el mensaje
   createdAt: string;
 }
 

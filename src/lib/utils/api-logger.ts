@@ -75,6 +75,8 @@ export const apiLogger = {
     logApiResponse({ ...options, emoji: '📦' }),
   tags: (options: Omit<ApiLogOptions, 'emoji'>) =>
     logApiResponse({ ...options, emoji: '🏷️' }),
+  sales: (options: Omit<ApiLogOptions, 'emoji'>) =>
+    logApiResponse({ ...options, emoji: '💼' }),
   general: (options: Omit<ApiLogOptions, 'emoji'>) =>
     logApiResponse({ ...options, emoji: '📡' }),
 };

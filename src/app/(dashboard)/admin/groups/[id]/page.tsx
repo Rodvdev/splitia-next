@@ -10,15 +10,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { adminApi } from '@/lib/api/admin';
 import { GroupResponse, UpdateGroupRequest } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { ArrowLeft, Users, Calendar, User, Edit, Save, X } from 'lucide-react';
+import { ArrowLeft, Users, Calendar, User, Edit, Save, X, Receipt, Wallet, MessageSquare, Mail, CheckSquare, UserPlus, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
+import GroupDetailInfoTab from './components/GroupDetailInfoTab';
+import GroupDetailExpensesTab from './components/GroupDetailExpensesTab';
+import GroupDetailBudgetsTab from './components/GroupDetailBudgetsTab';
+import GroupDetailConversationsTab from './components/GroupDetailConversationsTab';
+import GroupDetailMessagesTab from './components/GroupDetailMessagesTab';
+import GroupDetailTasksTab from './components/GroupDetailTasksTab';
+import GroupDetailMembersTab from './components/GroupDetailMembersTab';
+import GroupDetailInvitationsTab from './components/GroupDetailInvitationsTab';
+import GroupDetailCategoriesTab from './components/GroupDetailCategoriesTab';
 
 const updateGroupSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
@@ -38,6 +48,7 @@ export default function GroupDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState('informacion');
 
   const {
     register,
@@ -161,102 +172,21 @@ export default function GroupDetailPage() {
     return <ErrorMessage message="Grupo no encontrado" />;
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/admin/groups">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold">{group.name}</h1>
-          <p className="text-muted-foreground">Detalle del grupo</p>
-        </div>
-      </div>
-
-      {!isEditing ? (
-        <>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Información del Grupo</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">ID</p>
-                    <p className="text-sm">{group.id}</p>
-                  </div>
-                  {group.description && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Descripción</p>
-                      <p className="text-sm">{group.description}</p>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">
-                      Creado por: {group.createdBy.name} {group.createdBy.lastName}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">
-                      Creado: {formatDate(group.createdAt, 'PP', 'es')}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Miembros ({group.members.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {group.members.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-xs font-semibold">
-                            {member.user.name[0]}{member.user.lastName[0]}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">
-                            {member.user.name} {member.user.lastName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{member.user.email}</p>
-                        </div>
-                      </div>
-                      <Badge variant="outline">{member.role}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+  if (isEditing) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/admin/groups">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold">{group.name}</h1>
+            <p className="text-muted-foreground">Editar grupo</p>
           </div>
+        </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Acciones</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsEditing(true)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar Grupo
-                </Button>
-                <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-                  {isDeleting ? 'Eliminando...' : 'Eliminar Grupo'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      ) : (
         <Card>
           <CardHeader>
             <CardTitle>Editar Grupo</CardTitle>
@@ -289,8 +219,113 @@ export default function GroupDetailPage() {
             </form>
           </CardContent>
         </Card>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/admin/groups">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold">{group.name}</h1>
+          <p className="text-muted-foreground">Detalle del grupo</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsEditing(true)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Editar
+          </Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+            {isDeleting ? 'Eliminando...' : 'Eliminar'}
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent className="p-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full flex-wrap">
+              <TabsTrigger value="informacion">
+                <User className="h-4 w-4 mr-2" />
+                Información
+              </TabsTrigger>
+              <TabsTrigger value="gastos">
+                <Receipt className="h-4 w-4 mr-2" />
+                Gastos
+              </TabsTrigger>
+              <TabsTrigger value="presupuestos">
+                <Wallet className="h-4 w-4 mr-2" />
+                Presupuestos
+              </TabsTrigger>
+              <TabsTrigger value="conversaciones">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Conversaciones
+              </TabsTrigger>
+              <TabsTrigger value="mensajes">
+                <Mail className="h-4 w-4 mr-2" />
+                Mensajes
+              </TabsTrigger>
+              <TabsTrigger value="tareas">
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Tareas
+              </TabsTrigger>
+              <TabsTrigger value="categorias">
+                <Tag className="h-4 w-4 mr-2" />
+                Categorías
+              </TabsTrigger>
+              <TabsTrigger value="miembros">
+                <Users className="h-4 w-4 mr-2" />
+                Miembros
+              </TabsTrigger>
+              <TabsTrigger value="invitaciones">
+                <UserPlus className="h-4 w-4 mr-2" />
+                Invitaciones
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="informacion" className="mt-6">
+              <GroupDetailInfoTab group={group} />
+            </TabsContent>
+
+            <TabsContent value="gastos" className="mt-6">
+              <GroupDetailExpensesTab groupId={groupId} />
+            </TabsContent>
+
+            <TabsContent value="presupuestos" className="mt-6">
+              <GroupDetailBudgetsTab groupId={groupId} />
+            </TabsContent>
+
+            <TabsContent value="conversaciones" className="mt-6">
+              <GroupDetailConversationsTab groupId={groupId} />
+            </TabsContent>
+
+            <TabsContent value="mensajes" className="mt-6">
+              <GroupDetailMessagesTab groupId={groupId} />
+            </TabsContent>
+
+            <TabsContent value="tareas" className="mt-6">
+              <GroupDetailTasksTab groupId={groupId} />
+            </TabsContent>
+
+            <TabsContent value="categorias" className="mt-6">
+              <GroupDetailCategoriesTab groupId={groupId} />
+            </TabsContent>
+
+            <TabsContent value="miembros" className="mt-6">
+              <GroupDetailMembersTab group={group} />
+            </TabsContent>
+
+            <TabsContent value="invitaciones" className="mt-6">
+              <GroupDetailInvitationsTab groupId={groupId} />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

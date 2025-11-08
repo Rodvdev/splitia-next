@@ -22,8 +22,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { adminApi } from '@/lib/api/admin';
-import { groupInvitationsApi } from '@/lib/api/group-invitations';
 import { useAuthStore } from '@/store/authStore';
+import { isAdmin } from '@/lib/auth/token';
+import { getToken } from '@/lib/auth/token';
 import { formatDate, formatCurrency } from '@/lib/utils/format';
 import { extractDataFromResponse } from '@/lib/utils/api-response';
 import { Badge } from '@/components/ui/badge';
@@ -214,6 +215,22 @@ export default function GroupDetailPage() {
   const canEditGroup = (() => {
     if (!group || !user) return false;
     return group.members.some((m) => m.user.id === user.id && m.role === 'ADMIN');
+  })();
+
+  // Check if user is system admin (required for sending group invitations)
+  const isSystemAdmin = (() => {
+    if (!user) return false;
+    // Check user role from store first, then fallback to token
+    const userRole = user.role;
+    if (userRole) {
+      const normalizedRole = userRole.toUpperCase();
+      if (['ADMIN', 'SUPER_ADMIN', 'SUPERADMIN'].includes(normalizedRole)) {
+        return true;
+      }
+    }
+    // Fallback to token check
+    const token = getToken();
+    return isAdmin(token);
   })();
 
   const handleUpdateGroup = async (data: UpdateGroupFormData) => {
@@ -489,6 +506,12 @@ export default function GroupDetailPage() {
   };
 
   const handleInvite = async () => {
+    // Only system admins can send invitations
+    if (!isSystemAdmin) {
+      toast.error('Solo los administradores del sistema pueden enviar invitaciones grupales.');
+      return;
+    }
+
     if (!inviteEmail || inviteEmail.trim().length < 5) {
       toast.error('Ingresa un correo válido para enviar invitación');
       return;
@@ -496,57 +519,29 @@ export default function GroupDetailPage() {
     setIsSubmitting(true);
     const payload = { email: inviteEmail.trim() };
     try {
-      const res = await groupInvitationsApi.createTargeted(groupId, payload);
-      apiLogger.groups({ endpoint: 'group-invitations.createTargeted', success: res.success, params: { groupId, ...payload }, data: res.data, error: res.success ? null : res });
-      if (res.success) {
-        toast.success('Invitación enviada');
-        setInviteOpen(false);
-        setInviteEmail('');
-        return;
-      }
+      // Only use admin endpoint - requires system admin role
       const adminRes = await adminApi.createGroupInvitation({ groupId, ...payload } as any);
       apiLogger.groups({ endpoint: 'admin.createGroupInvitation', success: adminRes.success, params: { groupId, ...payload }, data: adminRes.data, error: adminRes.success ? null : adminRes });
       if (adminRes.success) {
-        toast.success('Invitación enviada (admin)');
+        toast.success('Invitación enviada exitosamente');
         setInviteOpen(false);
         setInviteEmail('');
-        return;
-      }
-      toast.error(adminRes.message || 'No se pudo crear la invitación');
-    } catch (error1: any) {
-      const status1 = error1?.response?.status;
-      apiLogger.groups({ endpoint: 'group-invitations.createTargeted', success: false, params: { groupId, ...payload }, error: error1 });
-      if (status1 === 409) {
-        toast.error('Ya existe una invitación pendiente para este correo o el usuario ya es miembro.');
-        setIsSubmitting(false);
-        return;
-      }
-      if (status1 === 410) {
-        toast.error('La invitación está expirada o inactiva.');
-        setIsSubmitting(false);
-        return;
-      }
-      try {
-        const adminRes = await adminApi.createGroupInvitation({ groupId, ...payload } as any);
-        apiLogger.groups({ endpoint: 'admin.createGroupInvitation', success: adminRes.success, params: { groupId, ...payload }, data: adminRes.data, error: adminRes.success ? null : adminRes });
-        if (adminRes.success) {
-          toast.success('Invitación enviada (admin)');
-          setInviteOpen(false);
-          setInviteEmail('');
-          return;
-        }
+      } else {
         toast.error(adminRes.message || 'No se pudo crear la invitación');
-      } catch (error2: any) {
-        const status = error2?.response?.status;
-        if (status === 403) {
-          toast.error('No tienes permisos para enviar invitaciones.');
-        } else if (status === 401) {
-          toast.error('Sesión expirada. Inicia sesión nuevamente.');
-        } else if (status === 404) {
-          toast.error('Endpoint de invitaciones no disponible. Verificar backend.');
-        } else {
-          toast.error(error2?.response?.data?.message || 'Error al enviar invitación');
-        }
+      }
+    } catch (error: any) {
+      const status = error?.response?.status;
+      apiLogger.groups({ endpoint: 'admin.createGroupInvitation', success: false, params: { groupId, ...payload }, error });
+      if (status === 403) {
+        toast.error('No tienes permisos para enviar invitaciones. Solo los administradores del sistema pueden enviar invitaciones.');
+      } else if (status === 401) {
+        toast.error('Sesión expirada. Inicia sesión nuevamente.');
+      } else if (status === 404) {
+        toast.error('Endpoint de invitaciones no disponible. Verificar backend.');
+      } else if (status === 409) {
+        toast.error('Ya existe una invitación pendiente para este correo o el usuario ya es miembro.');
+      } else {
+        toast.error(error?.response?.data?.message || 'Error al enviar invitación');
       }
     } finally {
       setIsSubmitting(false);
@@ -771,7 +766,7 @@ export default function GroupDetailPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Miembros del Grupo</CardTitle>
-                {canManageMembers && (
+                {isSystemAdmin && (
                   <Button size="sm" onClick={() => setInviteOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Invitar miembro
@@ -872,7 +867,7 @@ export default function GroupDetailPage() {
                 <Button onClick={handleAddMember} disabled={isSubmitting || !canManageMembers} variant="secondary">
                   {isSubmitting ? 'Agregando...' : 'Agregar por ID'}
                 </Button>
-                <Button onClick={handleInvite} disabled={isSubmitting || !canManageMembers}>
+                <Button onClick={handleInvite} disabled={isSubmitting || !isSystemAdmin}>
                   {isSubmitting ? 'Enviando...' : 'Enviar invitación'}
                 </Button>
               </DialogFooter>

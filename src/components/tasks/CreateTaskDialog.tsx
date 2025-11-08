@@ -17,6 +17,7 @@ import { CreateTaskRequest, TaskPriority, ExpenseResponse, ExpenseShareRequest, 
 import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
 import { DollarSign, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
+import { IconSelector } from '@/components/common/IconSelector';
 
 const createTaskSchema = z.object({
   title: z.string().min(1, 'El título es requerido'),
@@ -64,6 +65,7 @@ export function CreateTaskDialog({ open, onOpenChange, groupId, onSuccess }: Cre
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
   const [groupMembers, setGroupMembers] = useState<UserResponse[]>([]);
   const [isExpenseSectionOpen, setIsExpenseSectionOpen] = useState(false);
+  const [taskIcon, setTaskIcon] = useState<string | undefined>();
 
   const {
     register,
@@ -83,7 +85,7 @@ export function CreateTaskDialog({ open, onOpenChange, groupId, onSuccess }: Cre
     },
   });
 
-  const { fields: shareFields, append: appendShare, remove: removeShare } = useFieldArray({
+  const { fields: shareFields, append: appendShare, remove: removeShare, replace: replaceShares } = useFieldArray({
     control,
     name: 'futureExpenseShares',
   });
@@ -100,6 +102,7 @@ export function CreateTaskDialog({ open, onOpenChange, groupId, onSuccess }: Cre
         futureExpenseCurrency: 'USD',
         futureExpenseShares: [],
       });
+      setTaskIcon(undefined);
     }
   }, [open, groupId]);
 
@@ -133,9 +136,8 @@ export function CreateTaskDialog({ open, onOpenChange, groupId, onSuccess }: Cre
       type: 'EQUAL' as const,
     }));
     
-    setValue('futureExpenseShares', shares);
-    shareFields.forEach((_, index) => removeShare(index));
-    shares.forEach(share => appendShare(share));
+    // Usar replace para reemplazar todo el array de una vez
+    replaceShares(shares);
   };
 
   const onSubmit = async (data: CreateTaskFormData) => {
@@ -184,7 +186,16 @@ export function CreateTaskDialog({ open, onOpenChange, groupId, onSuccess }: Cre
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">Título *</Label>
-            <Input id="title" placeholder="Título de la tarea" {...register('title')} />
+            <div className="flex items-center gap-2">
+              <IconSelector
+                value={taskIcon}
+                onSelect={(value) => {
+                  setTaskIcon(typeof value === 'string' ? value : undefined);
+                }}
+                type="both"
+              />
+              <Input id="title" placeholder="Título de la tarea" className="flex-1" {...register('title')} />
+            </div>
             {errors.title && <p className="text-sm text-destructive">{errors.title.message}</p>}
           </div>
           <div className="space-y-2">

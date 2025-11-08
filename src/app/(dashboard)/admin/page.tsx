@@ -14,6 +14,7 @@ import { format, subMonths, startOfMonth, endOfMonth, parseISO, subWeeks, startO
 import { es } from 'date-fns/locale';
 import { apiLogger } from '@/lib/utils/api-logger';
 import { extractDataFromResponse } from '@/lib/utils/api-response';
+import { useWebSocket, WS_CHANNELS } from '@/lib/websocket/WebSocketProvider';
 
 interface ChartDataPoint {
   date: string;
@@ -35,10 +36,47 @@ export default function AdminDashboardPage() {
   const [previousMonthTickets, setPreviousMonthTickets] = useState(0);
   const [revenueChartData, setRevenueChartData] = useState<ChartDataPoint[]>([]);
   const [recentUsers, setRecentUsers] = useState<UserResponse[]>([]);
+  const { subscribe, connected } = useWebSocket();
 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Suscripción a actualizaciones en tiempo real para métricas del dashboard
+  useEffect(() => {
+    if (!connected) return;
+
+    // Suscripción a notificaciones globales
+    const unsubscribeNotifications = subscribe(WS_CHANNELS.NOTIFICATIONS, (message) => {
+      const { type, action, data } = message;
+      
+      if (type === 'USER_CREATED' || action === 'CREATED') {
+        setTotalUsers((prev) => prev + 1);
+        toast.success('Nuevo usuario registrado');
+      } else if (type === 'GROUP_CREATED' || action === 'CREATED') {
+        setActiveGroups((prev) => prev + 1);
+      } else if (type === 'SUBSCRIPTION_CREATED' || type === 'SUBSCRIPTION_UPDATED' || action === 'CREATED' || action === 'UPDATED') {
+        // Recargar datos de suscripciones para actualizar MRR
+        loadDashboardData();
+      } else if (type === 'TICKET_CREATED' || action === 'CREATED') {
+        const ticket = data.ticket || data;
+        if (ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS') {
+          setOpenTickets((prev) => prev + 1);
+        }
+      } else if (type === 'TICKET_STATUS_CHANGED' || action === 'STATUS_CHANGED') {
+        const { oldStatus, newStatus } = data;
+        if ((oldStatus === 'OPEN' || oldStatus === 'IN_PROGRESS') && 
+            (newStatus === 'RESOLVED' || newStatus === 'CLOSED')) {
+          setOpenTickets((prev) => Math.max(0, prev - 1));
+        } else if ((oldStatus === 'RESOLVED' || oldStatus === 'CLOSED') && 
+                   (newStatus === 'OPEN' || newStatus === 'IN_PROGRESS')) {
+          setOpenTickets((prev) => prev + 1);
+        }
+      }
+    });
+
+    return unsubscribeNotifications;
+  }, [subscribe, connected]);
 
   const loadDashboardData = async () => {
     try {

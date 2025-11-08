@@ -136,16 +136,16 @@ export default function AdminGroupUsersPage() {
                               <UserCheck className="h-5 w-5 text-primary" />
                             </div>
                             <div>
-                              <p className="font-medium">{groupUser.group.name}</p>
+                              <p className="font-medium">{groupUser.group?.name || 'Sin grupo'}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
                           <div>
                             <p className="text-sm font-medium">
-                              {groupUser.user.name} {groupUser.user.lastName}
+                              {groupUser.user?.name || ''} {groupUser.user?.lastName || ''}
                             </p>
-                            <p className="text-xs text-muted-foreground">{groupUser.user.email}</p>
+                            <p className="text-xs text-muted-foreground">{groupUser.user?.email || 'Sin email'}</p>
                           </div>
                         </td>
                         <td className="px-4 py-3">

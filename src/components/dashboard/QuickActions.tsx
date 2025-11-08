@@ -11,19 +11,19 @@ export function QuickActions() {
     {
       label: 'Nuevo Gasto',
       icon: Receipt,
-      href: '/expenses/new',
+      href: '/dashboard/expenses/new',
       variant: 'default' as const,
     },
     {
       label: 'Crear Grupo',
       icon: Users,
-      href: '/groups/new',
+      href: '/dashboard/groups/new',
       variant: 'outline' as const,
     },
     {
       label: 'Nuevo Presupuesto',
       icon: Wallet,
-      href: '/budgets/new',
+      href: '/dashboard/budgets/new',
       variant: 'outline' as const,
     },
   ];

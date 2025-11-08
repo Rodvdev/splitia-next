@@ -13,6 +13,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { SidebarTrigger } from '@/components/layout/Sidebar';
+import { WebSocketStatus } from '@/components/common/WebSocketStatus';
+import { NotificationsBell } from '@/components/common/NotificationsBell';
+import Link from 'next/link';
 
 export function Header() {
   const { user, logout } = useAuthStore();
@@ -62,9 +65,8 @@ export function Header() {
           )}
         </div>
         <div className="flex items-center gap-1 sm:gap-4 flex-shrink-0">
-          <Button variant="ghost" size="icon" className="hidden sm:flex">
-            <Bell className="h-5 w-5" />
-          </Button>
+          <WebSocketStatus />
+          <NotificationsBell />
           {isMobile ? (
             <Popover>
               <PopoverTrigger asChild>
@@ -87,6 +89,12 @@ export function Header() {
                       <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                     </div>
                   </div>
+                  <Link href="/dashboard/profile">
+                    <Button variant="ghost" size="sm" className="w-full justify-start">
+                      <User className="h-4 w-4 mr-2" />
+                      Ver Perfil
+                    </Button>
+                  </Link>
                   <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleLogout}>
                     <LogOut className="h-4 w-4 mr-2" />
                     Cerrar Sesión
@@ -96,7 +104,7 @@ export function Header() {
             </Popover>
           ) : (
             <>
-              <div className="hidden md:flex items-center gap-2">
+              <Link href="/dashboard/profile" className="hidden md:flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer">
                 <div className="text-right">
                   <p className="text-sm font-medium">{user?.name} {user?.lastName}</p>
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
@@ -106,7 +114,7 @@ export function Header() {
                     {user?.name?.[0]}{user?.lastName?.[0]}
                   </span>
                 </div>
-              </div>
+              </Link>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
                 <LogOut className="h-5 w-5" />
               </Button>

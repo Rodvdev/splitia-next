@@ -127,6 +127,8 @@ export function useAuthRestore() {
     restoreSession();
   }, [initializeAuth, setUser, setToken, isInitialized]);
 
-  return { isRestoring };
+  const user = useAuthStore((state) => state.user);
+
+  return { isRestoring, user };
 }
 

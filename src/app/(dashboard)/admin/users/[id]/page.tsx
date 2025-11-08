@@ -11,15 +11,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { adminApi } from '@/lib/api/admin';
 import { UserResponse, UpdateUserRequest } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { ArrowLeft, Mail, Phone, Calendar, Globe, DollarSign, Edit, Save, X } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Calendar, Globe, DollarSign, Edit, Save, X, Users, Receipt, CheckSquare, Activity, User, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
+import UserDetailInfoTab from './components/UserDetailInfoTab';
+import UserDetailGroupsTab from './components/UserDetailGroupsTab';
+import UserDetailExpensesTab from './components/UserDetailExpensesTab';
+import UserDetailTasksTab from './components/UserDetailTasksTab';
+import UserDetailActivityTab from './components/UserDetailActivityTab';
+import UserDetailCategoriesTab from './components/UserDetailCategoriesTab';
 
 const CURRENCIES = [
   { value: 'USD', label: 'USD - Dólar Estadounidense' },
@@ -71,6 +78,7 @@ export default function UserDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState('informacion');
 
   const {
     register,
@@ -203,104 +211,21 @@ export default function UserDetailPage() {
     return <ErrorMessage message="Usuario no encontrado" />;
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/admin/users">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold">Detalle de Usuario</h1>
-          <p className="text-muted-foreground">Información completa del usuario</p>
-        </div>
-      </div>
-
-      {!isEditing ? (
-        <>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Información Personal</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xl font-semibold">
-                      {user.name[0]}{user.lastName[0]}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">{user.name} {user.lastName}</h3>
-                    <p className="text-sm text-muted-foreground">ID: {user.id}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{user.email}</span>
-                  </div>
-                  {user.phoneNumber && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{user.phoneNumber}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">
-                      Registrado: {formatDate(user.createdAt, 'PP', 'es')}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Preferencias</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Moneda:</span>
-                  <Badge variant="outline">{user.currency}</Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Idioma:</span>
-                  <Badge variant="outline">{user.language}</Badge>
-                </div>
-                {user.role && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">Rol:</span>
-                    <Badge variant="outline">{user.role}</Badge>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+  if (isEditing) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/admin/users">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold">Editar Usuario</h1>
+            <p className="text-muted-foreground">Modificar información del usuario</p>
           </div>
+        </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Acciones</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsEditing(true)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar Usuario
-                </Button>
-                <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-                  {isDeleting ? 'Eliminando...' : 'Eliminar Usuario'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      ) : (
         <Card>
           <CardHeader>
             <CardTitle>Editar Usuario</CardTitle>
@@ -408,8 +333,89 @@ export default function UserDetailPage() {
             </form>
           </CardContent>
         </Card>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/admin/users">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold">{user.name} {user.lastName}</h1>
+          <p className="text-muted-foreground">Detalle del usuario</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsEditing(true)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Editar
+          </Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+            {isDeleting ? 'Eliminando...' : 'Eliminar'}
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent className="p-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full flex-wrap">
+              <TabsTrigger value="informacion">
+                <User className="h-4 w-4 mr-2" />
+                Información
+              </TabsTrigger>
+              <TabsTrigger value="grupos">
+                <Users className="h-4 w-4 mr-2" />
+                Grupos
+              </TabsTrigger>
+              <TabsTrigger value="gastos">
+                <Receipt className="h-4 w-4 mr-2" />
+                Gastos
+              </TabsTrigger>
+              <TabsTrigger value="categorias">
+                <Tag className="h-4 w-4 mr-2" />
+                Categorías
+              </TabsTrigger>
+              <TabsTrigger value="tareas">
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Tareas
+              </TabsTrigger>
+              <TabsTrigger value="actividad">
+                <Activity className="h-4 w-4 mr-2" />
+                Actividad
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="informacion" className="mt-6">
+              <UserDetailInfoTab user={user} />
+            </TabsContent>
+
+            <TabsContent value="grupos" className="mt-6">
+              <UserDetailGroupsTab userId={userId} />
+            </TabsContent>
+
+            <TabsContent value="gastos" className="mt-6">
+              <UserDetailExpensesTab userId={userId} />
+            </TabsContent>
+
+            <TabsContent value="categorias" className="mt-6">
+              <UserDetailCategoriesTab userId={userId} />
+            </TabsContent>
+
+            <TabsContent value="tareas" className="mt-6">
+              <UserDetailTasksTab userId={userId} />
+            </TabsContent>
+
+            <TabsContent value="actividad" className="mt-6">
+              <UserDetailActivityTab userId={userId} />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-
