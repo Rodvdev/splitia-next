@@ -17,8 +17,11 @@ import {
   FileText,
   Mail,
   UserCheck,
-  UserPlus,
   CheckSquare,
+  Shield,
+  BarChart3,
+  Workflow,
+  Plug,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import {
@@ -35,7 +38,6 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Gastos', href: '/dashboard/expenses', icon: Receipt },
   { name: 'Grupos', href: '/dashboard/groups', icon: Users },
-  { name: 'Invitaciones', href: '/dashboard/invitations', icon: UserPlus },
   { name: 'Presupuesto', href: '/dashboard/budgets', icon: Wallet },
   { name: 'Kanban', href: '/dashboard/kanban', icon: CheckSquare },
   { name: 'Chat', href: '/dashboard/chat', icon: MessageSquare },
@@ -49,20 +51,15 @@ const adminNavigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Usuarios', href: '/admin/users', icon: Users },
   { name: 'Grupos', href: '/admin/groups', icon: Users },
-  { name: 'Gastos', href: '/admin/expenses', icon: Receipt },
   { name: 'Participaciones', href: '/admin/expense-shares', icon: Share2 },
-  { name: 'Presupuestos', href: '/admin/budgets', icon: Wallet },
-  { name: 'Categorías', href: '/admin/categories', icon: Tag },
-  { name: 'Conversaciones', href: '/admin/conversations', icon: MessageSquare },
-  { name: 'Mensajes', href: '/admin/messages', icon: Mail },
   { name: 'Liquidaciones', href: '/admin/settlements', icon: FileText },
   { name: 'Suscripciones', href: '/admin/subscriptions', icon: CreditCard },
   { name: 'Planes', href: '/admin/plans', icon: CreditCard },
-  { name: 'Tareas', href: '/admin/tasks', icon: CheckSquare },
-  { name: 'Etiquetas', href: '/admin/task-tags', icon: Tag },
   { name: 'Tickets', href: '/admin/support-tickets', icon: HelpCircle },
-  { name: 'Invitaciones', href: '/admin/group-invitations', icon: UserPlus },
-  { name: 'Miembros', href: '/admin/group-users', icon: UserCheck },
+  { name: 'Auditoría', href: '/admin/audit/logs', icon: Shield },
+  { name: 'Analytics', href: '/admin/analytics/customers', icon: BarChart3 },
+  { name: 'Workflows', href: '/admin/automation/workflows', icon: Workflow },
+  { name: 'Integraciones', href: '/admin/integrations', icon: Plug },
 ];
 
 function SidebarContent() {

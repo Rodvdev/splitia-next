@@ -134,12 +134,14 @@ export default function CreateSupportTicketPage() {
                   name="priority"
                   control={control}
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value || undefined)} 
+                      value={field.value || undefined}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar prioridad" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Seleccionar...</SelectItem>
                         <SelectItem value="LOW">Baja</SelectItem>
                         <SelectItem value="MEDIUM">Media</SelectItem>
                         <SelectItem value="HIGH">Alta</SelectItem>

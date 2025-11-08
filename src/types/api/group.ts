@@ -5,6 +5,7 @@ export interface GroupResponse {
   name: string;
   description?: string;
   image?: string;
+  conversationId?: string; // ID de la conversación asociada al grupo
   createdBy: UserResponse;
   members: GroupMemberResponse[];
   createdAt: string;

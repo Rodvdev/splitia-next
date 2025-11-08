@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Badge } from '@/components/ui/badge';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { supportApi } from '@/lib/api/support';
-import { SupportTicketResponse } from '@/types';
+import { SupportTicketResponse, Page } from '@/types';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Plus, AlertCircle, CheckCircle, Clock, XCircle, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { apiLogger } from '@/lib/utils/api-logger';
-import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: 'Abierto',
@@ -53,35 +53,55 @@ const PRIORITY_LABELS: Record<string, string> = {
   URGENT: 'Urgente',
 };
 
+const CATEGORY_LABELS: Record<string, string> = {
+  TECHNICAL: 'Técnico',
+  BILLING: 'Facturación',
+  FEATURE_REQUEST: 'Solicitud',
+  BUG_REPORT: 'Error',
+  ACCOUNT: 'Cuenta',
+  GENERAL: 'General',
+};
+
+const PAGE_SIZE = 10;
+
 export default function SupportPage() {
   const [tickets, setTickets] = useState<SupportTicketResponse[]>([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadTickets();
-  }, []);
+  }, [page]);
 
   const loadTickets = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await supportApi.getAll();
+      const response = await supportApi.getAll({ page, size: PAGE_SIZE });
       apiLogger.support({
         endpoint: 'getAll',
         success: response.success,
-        params: {},
+        params: { page, size: PAGE_SIZE },
         data: response.data,
         error: response.success ? null : response,
       });
       if (response.success) {
-        setTickets(extractDataFromResponse(response));
+        const pageData = response.data as Page<SupportTicketResponse>;
+        setTickets(pageData.content || []);
+        setTotalPages(pageData.totalPages || 0);
+        setTotalElements(pageData.totalElements || 0);
+      } else {
+        setError(response.message || 'Error al cargar los tickets');
+        toast.error(response.message || 'Error al cargar los tickets');
       }
     } catch (err) {
       apiLogger.support({
         endpoint: 'getAll',
         success: false,
-        params: {},
+        params: { page, size: PAGE_SIZE },
         error: err,
       });
       const errorMessage = err instanceof Error 
@@ -147,69 +167,130 @@ export default function SupportPage() {
           }
         />
       ) : (
-        <div className="space-y-4">
-          {tickets.map((ticket) => {
-            const StatusIcon = STATUS_ICONS[ticket.status] || HelpCircle;
-            return (
-              <Card key={ticket.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-start gap-3">
-                        <StatusIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg mb-1">{ticket.title}</h3>
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {ticket.description}
-                          </p>
+        <>
+          <div className="space-y-4">
+            {tickets.map((ticket) => {
+              const StatusIcon = STATUS_ICONS[ticket.status] || HelpCircle;
+              return (
+                <Link key={ticket.id} href={`/dashboard/support/${ticket.id}`}>
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-start gap-3">
+                            <StatusIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-lg mb-1">{ticket.title}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {ticket.description}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge 
+                              variant={STATUS_COLORS[ticket.status] || 'default'}
+                              className={
+                                ticket.status === 'OPEN' || ticket.status === 'PENDING_CUSTOMER' 
+                                  ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-transparent' 
+                                  : ticket.status === 'RESOLVED' 
+                                  ? 'bg-green-500 hover:bg-green-600 text-white border-transparent'
+                                  : ''
+                              }
+                            >
+                              {STATUS_LABELS[ticket.status] || ticket.status}
+                            </Badge>
+                            <Badge 
+                              variant={PRIORITY_COLORS[ticket.priority] || 'default'}
+                              className={
+                                ticket.priority === 'HIGH' 
+                                  ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-transparent'
+                                  : ''
+                              }
+                            >
+                              {ticket.priority ? PRIORITY_LABELS[ticket.priority] || ticket.priority : 'No especificada'}
+                            </Badge>
+                            <Badge variant="outline">
+                              {CATEGORY_LABELS[ticket.category] || ticket.category}
+                            </Badge>
+                          </div>
+
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span>
+                              Creado: {format(new Date(ticket.createdAt), 'dd MMM yyyy')}
+                            </span>
+                            {ticket.resolvedAt && (
+                              <span>
+                                Resuelto: {format(new Date(ticket.resolvedAt), 'dd MMM yyyy')}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge 
-                          variant={STATUS_COLORS[ticket.status] || 'default'}
-                          className={
-                            ticket.status === 'OPEN' || ticket.status === 'PENDING_CUSTOMER' 
-                              ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-transparent' 
-                              : ticket.status === 'RESOLVED' 
-                              ? 'bg-green-500 hover:bg-green-600 text-white border-transparent'
-                              : ''
-                          }
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    href="#" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (page > 0) setPage(page - 1);
+                    }}
+                    className={page === 0 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => i).map((pageNum) => {
+                  if (
+                    pageNum === 0 ||
+                    pageNum === totalPages - 1 ||
+                    (pageNum >= page - 1 && pageNum <= page + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPage(pageNum);
+                          }}
+                          isActive={pageNum === page}
+                          className="cursor-pointer"
                         >
-                          {STATUS_LABELS[ticket.status] || ticket.status}
-                        </Badge>
-                        <Badge 
-                          variant={PRIORITY_COLORS[ticket.priority] || 'default'}
-                          className={
-                            ticket.priority === 'HIGH' 
-                              ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-transparent'
-                              : ''
-                          }
-                        >
-                          {PRIORITY_LABELS[ticket.priority] || ticket.priority}
-                        </Badge>
-                        <Badge variant="outline">
-                          {ticket.category}
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>
-                          Creado: {format(new Date(ticket.createdAt), 'dd MMM yyyy')}
-                        </span>
-                        {ticket.resolvedAt && (
-                          <span>
-                            Resuelto: {format(new Date(ticket.resolvedAt), 'dd MMM yyyy')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                          {pageNum + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  } else if (pageNum === page - 2 || pageNum === page + 2) {
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <span className="px-2">...</span>
+                      </PaginationItem>
+                    );
+                  }
+                  return null;
+                })}
+                <PaginationItem>
+                  <PaginationNext 
+                    href="#" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (page < totalPages - 1) setPage(page + 1);
+                    }}
+                    className={page >= totalPages - 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
       )}
     </div>
   );

@@ -4,11 +4,14 @@ import { ApiResponse, GroupInvitationResponse, CreateGroupInvitationRequest, Pag
 /**
  * Public Group Invitations API
  * Aligns with new backend endpoints:
- * - POST   /groups/{groupId}/invitations/targeted
+ * - POST   /groups/{groupId}/invitations/targeted (DEPRECATED - Use admin endpoint instead)
  * - GET    /groups/{groupId}/invitations
  * - GET    /invitations/me
  * - POST   /invitations/{token}/accept
  * - POST   /invitations/{token}/reject
+ * 
+ * NOTE: Creating group invitations requires system admin role (ADMIN/SUPER_ADMIN).
+ * Use adminApi.createGroupInvitation() instead of createTargeted().
  */
 export const groupInvitationsApi = {
   /**
@@ -23,6 +26,9 @@ export const groupInvitationsApi = {
 
   /**
    * Create a targeted invitation for a specific group
+   * @deprecated This endpoint requires admin permissions and may return 500/403 errors.
+   * Use adminApi.createGroupInvitation() instead, which requires system admin role.
+   * Only system admins (ADMIN/SUPER_ADMIN) can create group invitations.
    */
   createTargeted: async (
     groupId: string,

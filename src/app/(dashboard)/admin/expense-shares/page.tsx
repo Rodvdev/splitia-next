@@ -19,6 +19,7 @@ export default function AdminExpenseSharesPage() {
   const [expenseShares, setExpenseShares] = useState<ExpenseShareResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadExpenseShares();
@@ -27,6 +28,7 @@ export default function AdminExpenseSharesPage() {
   const loadExpenseShares = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await adminApi.getAllExpenseShares({ page: 0, size: 50 });
       apiLogger.expenses({
         endpoint: 'getAllExpenseShares',
@@ -35,15 +37,35 @@ export default function AdminExpenseSharesPage() {
         data: response.data,
         error: response.success ? null : response,
       });
+      
+      if (!response.success) {
+        const status = (response as any).status || (response as any).response?.status;
+        if (status === 403) {
+          setError('No tienes permisos para acceder a las participaciones en gastos. Contacta con un administrador si necesitas acceso.');
+        } else {
+          setError((response as any).message || 'Error al cargar las participaciones en gastos');
+        }
+        return;
+      }
+      
       setExpenseShares(extractDataFromResponse(response));
-    } catch (error) {
+    } catch (err: any) {
       apiLogger.expenses({
         endpoint: 'getAllExpenseShares',
         success: false,
         params: { page: 0, size: 50 },
-        error: error,
+        error: err,
       });
-      console.error('Error loading expense shares:', error);
+      
+      const status = err?.response?.status;
+      if (status === 403) {
+        setError('No tienes permisos para acceder a las participaciones en gastos. Contacta con un administrador si necesitas acceso.');
+      } else if (status === 401) {
+        setError('Sesión expirada. Por favor, inicia sesión nuevamente.');
+      } else {
+        setError(err?.response?.data?.message || 'Error al cargar las participaciones en gastos');
+      }
+      console.error('Error loading expense shares:', err);
     } finally {
       setLoading(false);
     }
@@ -69,6 +91,27 @@ export default function AdminExpenseSharesPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Participaciones en Gastos</h1>
+            <p className="text-muted-foreground">Gestiona todas las participaciones en gastos</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <EmptyState
+              title="Error al cargar participaciones"
+              description={error}
+            />
+          </CardContent>
+        </Card>
       </div>
     );
   }

@@ -1,45 +1,84 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { EmptyState } from '@/components/common/EmptyState';
-import { MessageSquare, Info } from 'lucide-react';
+import { useState } from 'react';
+import { ConversationResponse, GroupResponse } from '@/types';
+import { ChatSidebar } from './components/ChatSidebar';
+import { ChatMessageArea } from './components/ChatMessageArea';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, MessageSquare } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 export default function ChatPage() {
+  const [selectedConversation, setSelectedConversation] = useState<ConversationResponse | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<GroupResponse | null>(null);
+  const [showSidebar, setShowSidebar] = useState(true);
+
+  const handleSelectConversation = (conversation: ConversationResponse, group: GroupResponse) => {
+    setSelectedConversation(conversation);
+    setSelectedGroup(group);
+    // En móvil, ocultar sidebar cuando se selecciona una conversación
+    if (window.innerWidth < 768) {
+      setShowSidebar(false);
+    }
+  };
+
+  const handleBackToSidebar = () => {
+    setShowSidebar(true);
+    setSelectedConversation(null);
+    setSelectedGroup(null);
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Chat</h1>
-        <p className="text-sm sm:text-base text-muted-foreground">Mensajes y conversaciones</p>
+    <div className="h-[calc(100vh-4rem)] flex flex-col">
+      {/* Mobile Header */}
+      <div className="md:hidden border-b p-4 bg-card flex items-center gap-3">
+        {!showSidebar && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleBackToSidebar}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <MessageSquare className="h-5 w-5" />
+          Chat
+        </h1>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <Info className="h-4 w-4 sm:h-5 sm:w-5" />
-            Información
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            El sistema de chat está en desarrollo. Actualmente, el backend solo proporciona 
-            endpoints para enviar y recibir mensajes dentro de conversaciones existentes. 
-            La funcionalidad completa de listado de conversaciones y chat en tiempo real 
-            estará disponible próximamente.
-          </p>
-        </CardContent>
-      </Card>
+      {/* Desktop Header */}
+      <div className="hidden md:block p-6 pb-4">
+        <h1 className="text-3xl font-bold">Chat</h1>
+        <p className="text-muted-foreground">Comunícate con tus grupos</p>
+      </div>
 
-      <EmptyState
-        title="Chat en desarrollo"
-        description="La funcionalidad de chat estará disponible próximamente. Podrás comunicarte con otros miembros de tus grupos y recibir asistencia del equipo de soporte."
-        action={
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <MessageSquare className="h-4 w-4" />
-            <span className="text-xs sm:text-sm">Próximamente</span>
-          </div>
-        }
-      />
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <div
+          className={cn(
+            'w-full md:w-80 lg:w-96 flex-shrink-0 transition-transform duration-300',
+            !showSidebar && 'hidden md:block'
+          )}
+        >
+          <ChatSidebar
+            selectedConversationId={selectedConversation?.id || null}
+            onSelectConversation={handleSelectConversation}
+          />
+        </div>
+
+        {/* Chat Area */}
+        <div className={cn(
+          'flex-1 flex flex-col',
+          showSidebar && 'hidden md:flex'
+        )}>
+          <ChatMessageArea
+            conversation={selectedConversation}
+            groupName={selectedGroup?.name}
+          />
+        </div>
+      </div>
     </div>
   );
 }
-

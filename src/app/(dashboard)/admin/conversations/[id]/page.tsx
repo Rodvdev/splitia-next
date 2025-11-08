@@ -55,7 +55,7 @@ export default function ConversationDetailPage() {
   useEffect(() => {
     if (conversation && isEditing) {
       reset({
-        name: conversation.name,
+        name: conversation.name ?? undefined,
       });
     }
   }, [conversation, isEditing, reset]);
@@ -207,23 +207,25 @@ export default function ConversationDetailPage() {
                       Creado: {formatDate(conversation.createdAt, 'PP', 'es')}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">
-                      Actualizado: {formatDate(conversation.updatedAt, 'PP', 'es')}
-                    </span>
-                  </div>
+                  {conversation.updatedAt && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">
+                        Actualizado: {formatDate(conversation.updatedAt, 'PP', 'es')}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Participantes ({conversation.members.length})</CardTitle>
+                <CardTitle>Participantes ({conversation.participants.length})</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {conversation.members.map((participant) => (
+                  {conversation.participants.map((participant) => (
                     <div
                       key={participant.id}
                       className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50"

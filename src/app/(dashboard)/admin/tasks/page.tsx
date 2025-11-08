@@ -69,7 +69,7 @@ export default function AdminTasksPage() {
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter;
-    const matchesGroup = !groupFilter || task.group.id === groupFilter || task.group.name.toLowerCase().includes(groupFilter.toLowerCase());
+    const matchesGroup = !groupFilter || !task.group || task.group.id === groupFilter || task.group.name.toLowerCase().includes(groupFilter.toLowerCase());
     return matchesSearch && matchesStatus && matchesGroup;
   });
 
@@ -165,7 +165,7 @@ export default function AdminTasksPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm">{task.group.name}</td>
+                        <td className="px-4 py-3 text-sm">{task.group?.name || 'Sin grupo'}</td>
                         <td className="px-4 py-3">
                           <Badge className={statusColors[task.status]}>
                             {task.status}

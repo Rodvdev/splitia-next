@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { adminApi } from '@/lib/api/admin';
-import { SubscriptionResponse } from '@/types';
+import { SubscriptionResponse, UserResponse } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Search, MoreVertical, CreditCard, Plus, Users } from 'lucide-react';
@@ -35,7 +35,28 @@ export default function AdminSubscriptionsPage() {
         data: response.data,
         error: response.success ? null : response,
       });
-      setSubscriptions(extractDataFromResponse(response));
+      let subscriptionsData = extractDataFromResponse(response);
+      
+      // Normalizar campos que podrían venir en snake_case desde el backend
+      subscriptionsData = subscriptionsData.map((sub: any) => ({
+        ...sub,
+        userId: sub.userId || sub.user_id,
+        userName: sub.userName || sub.user_name,
+        userEmail: sub.userEmail || sub.user_email,
+      }));
+      
+      // Debug: verificar qué campos tienen las suscripciones
+      if (subscriptionsData.length > 0) {
+        console.log('Sample subscription:', subscriptionsData[0]);
+        console.log('Has userId:', !!subscriptionsData[0].userId);
+        console.log('Has userName:', !!subscriptionsData[0].userName);
+        console.log('Has user:', !!subscriptionsData[0].user);
+      }
+      
+      // Enriquecer suscripciones con información de usuario si falta
+      subscriptionsData = await enrichSubscriptionsWithUsers(subscriptionsData);
+      
+      setSubscriptions(subscriptionsData);
     } catch (error) {
       apiLogger.subscriptions({
         endpoint: 'getAllSubscriptions',
@@ -47,6 +68,63 @@ export default function AdminSubscriptionsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const enrichSubscriptionsWithUsers = async (subscriptions: SubscriptionResponse[]): Promise<SubscriptionResponse[]> => {
+    // Identificar suscripciones que necesitan información de usuario
+    // Buscar usuarios si tienen userId pero no tienen el objeto user completo
+    const subscriptionsNeedingUser = subscriptions.filter(
+      (sub) => sub.userId && !sub.user
+    );
+
+    console.log(`Found ${subscriptionsNeedingUser.length} subscriptions needing user data`);
+
+    if (subscriptionsNeedingUser.length === 0) {
+      return subscriptions;
+    }
+
+    // Obtener IDs únicos de usuarios
+    const userIds = [...new Set(subscriptionsNeedingUser.map((sub) => sub.userId!))];
+    console.log('User IDs to fetch:', userIds);
+
+    // Fetch usuarios en paralelo
+    const userPromises = userIds.map((userId) =>
+      adminApi.getUserById(userId).catch((error) => {
+        console.error(`Error fetching user ${userId}:`, error);
+        return null;
+      })
+    );
+
+    const userResults = await Promise.allSettled(userPromises);
+    
+    // Crear un mapa de userId -> UserResponse
+    const userMap = new Map<string, UserResponse>();
+    userResults.forEach((result, index) => {
+      if (result.status === 'fulfilled' && result.value?.success && result.value.data) {
+        const userId = userIds[index];
+        userMap.set(userId, result.value.data);
+        console.log(`Successfully fetched user ${userId}:`, result.value.data.name, result.value.data.lastName);
+      } else {
+        console.warn(`Failed to fetch user ${userIds[index]}:`, result);
+      }
+    });
+
+    console.log(`Successfully fetched ${userMap.size} users`);
+
+    // Enriquecer suscripciones con información de usuario
+    return subscriptions.map((subscription) => {
+      if (subscription.userId && !subscription.user && userMap.has(subscription.userId)) {
+        const user = userMap.get(subscription.userId)!;
+        return {
+          ...subscription,
+          user: user,
+          // También establecer userName y userEmail si no están presentes
+          userName: subscription.userName || `${user.name} ${user.lastName}`,
+          userEmail: subscription.userEmail || user.email,
+        };
+      }
+      return subscription;
+    });
   };
 
   const filteredSubscriptions = subscriptions.filter(

@@ -27,5 +27,6 @@ export interface UpdateSupportTicketRequest {
   status?: 'OPEN' | 'IN_PROGRESS' | 'PENDING_CUSTOMER' | 'RESOLVED' | 'CLOSED';
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   resolution?: string;
+  assignedToId?: string | null;
 }
 

@@ -13,11 +13,12 @@ import { adminApi } from '@/lib/api/admin';
 import { CategoryResponse, UpdateCategoryRequest } from '@/types';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { ArrowLeft, Tag, Calendar, Edit, Save, X } from 'lucide-react';
+import { ArrowLeft, Tag, Calendar, Edit, Save, X, Users, User } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
+import { IconSelector } from '@/components/common/IconSelector';
 
 const updateCategorySchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
@@ -42,10 +43,14 @@ export default function CategoryDetailPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<UpdateCategoryFormData>({
     resolver: zodResolver(updateCategorySchema),
   });
+
+  const iconValue = watch('icon');
 
   useEffect(() => {
     if (categoryId) {
@@ -126,7 +131,13 @@ export default function CategoryDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta categoría? Esta acción no se puede deshacer.')) {
+    const confirmMessage = 
+      '¿Estás seguro de que deseas eliminar esta categoría?\n\n' +
+      'El sistema verificará si hay gastos o presupuestos activos usando esta categoría. ' +
+      'Si existen relaciones activas, la eliminación puede fallar o se establecerá category_id = NULL en los registros asociados.\n\n' +
+      'Esta acción no se puede deshacer.';
+    
+    if (!confirm(confirmMessage)) {
       return;
     }
 
@@ -140,10 +151,26 @@ export default function CategoryDetailPage() {
         data: response.data,
         error: response.success ? null : response,
       });
-      if (response.success) {
-        toast.success('Categoría eliminada correctamente');
-        router.push('/admin/categories');
+      
+      if (!response.success) {
+        const errorMessage = (response as any).message || (response as any).data?.message;
+        if (errorMessage?.toLowerCase().includes('relacion') || 
+            errorMessage?.toLowerCase().includes('gasto') || 
+            errorMessage?.toLowerCase().includes('presupuesto') ||
+            errorMessage?.toLowerCase().includes('activo')) {
+          toast.error(
+            errorMessage || 
+            'No se puede eliminar la categoría porque tiene gastos o presupuestos asociados. ' +
+            'Primero debes eliminar o actualizar los registros relacionados.'
+          );
+        } else {
+          toast.error(errorMessage || 'Error al eliminar la categoría');
+        }
+        return;
       }
+      
+      toast.success('Categoría eliminada correctamente');
+      router.push('/admin/categories');
     } catch (err: any) {
       apiLogger.categories({
         endpoint: 'deleteCategory',
@@ -151,7 +178,28 @@ export default function CategoryDetailPage() {
         params: { id: categoryId },
         error: err,
       });
-      toast.error(err.response?.data?.message || 'Error al eliminar la categoría');
+      
+      const status = err?.response?.status;
+      const errorMessage = err?.response?.data?.message || err?.message || 'Error al eliminar la categoría';
+      
+      // Manejar errores específicos de relaciones activas
+      if (status === 409 || status === 400) {
+        if (errorMessage.toLowerCase().includes('relacion') || 
+            errorMessage.toLowerCase().includes('gasto') || 
+            errorMessage.toLowerCase().includes('presupuesto') ||
+            errorMessage.toLowerCase().includes('activo') ||
+            errorMessage.toLowerCase().includes('constraint')) {
+          toast.error(
+            'No se puede eliminar la categoría porque tiene gastos o presupuestos asociados. ' +
+            'El sistema establecerá category_id = NULL en los registros relacionados automáticamente, ' +
+            'pero si la eliminación falla, primero debes actualizar o eliminar los registros relacionados.'
+          );
+        } else {
+          toast.error(errorMessage);
+        }
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -257,6 +305,56 @@ export default function CategoryDetailPage() {
             </Card>
           </div>
 
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Grupo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Nombre del Grupo</p>
+                  {category.groupName ? (
+                    <Link href={`/admin/groups/${category.groupId}`} className="text-sm text-primary hover:underline font-medium">
+                      {category.groupName}
+                    </Link>
+                  ) : (
+                    <p className="text-sm">-</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">ID del Grupo</p>
+                  <p className="text-xs font-mono text-muted-foreground">{category.groupId}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Creador
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Nombre del Creador</p>
+                  {category.createdByName ? (
+                    <p className="text-sm font-medium">{category.createdByName}</p>
+                  ) : (
+                    <p className="text-sm">-</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">ID del Creador</p>
+                  <p className="text-xs font-mono text-muted-foreground">{category.createdById}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle>Acciones</CardTitle>
@@ -288,8 +386,22 @@ export default function CategoryDetailPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="icon">Icono</Label>
-                  <Input id="icon" {...register('icon')} />
+                  <Label>Icono</Label>
+                  <div className="flex items-center gap-2">
+                    <IconSelector
+                      value={iconValue}
+                      onSelect={(value) => {
+                        setValue('icon', typeof value === 'string' ? value : '');
+                      }}
+                      type="both"
+                    />
+                    <Input 
+                      id="icon" 
+                      placeholder="O ingresa un emoji" 
+                      {...register('icon')} 
+                      className="flex-1"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="color">Color</Label>

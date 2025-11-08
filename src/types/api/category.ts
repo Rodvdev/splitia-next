@@ -3,6 +3,10 @@ export interface CategoryResponse {
   name: string;
   icon?: string;
   color?: string;
+  groupId: string;
+  groupName?: string;
+  createdById: string;
+  createdByName?: string;
   createdAt: string;
 }
 
@@ -10,6 +14,7 @@ export interface CreateCategoryRequest {
   name: string;
   icon?: string;
   color?: string;
+  groupId: string;
 }
 
 export interface UpdateCategoryRequest {

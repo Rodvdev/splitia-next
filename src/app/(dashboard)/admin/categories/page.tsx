@@ -19,6 +19,7 @@ export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadCategories();
@@ -27,6 +28,7 @@ export default function AdminCategoriesPage() {
   const loadCategories = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await adminApi.getAllCategories({ page: 0, size: 50 });
       apiLogger.categories({
         endpoint: 'getAllCategories',
@@ -35,15 +37,35 @@ export default function AdminCategoriesPage() {
         data: response.data,
         error: response.success ? null : response,
       });
+      
+      if (!response.success) {
+        const status = (response as any).status || (response as any).response?.status;
+        if (status === 403) {
+          setError('No tienes permisos para acceder a las categorías. Contacta con un administrador si necesitas acceso.');
+        } else {
+          setError((response as any).message || 'Error al cargar las categorías');
+        }
+        return;
+      }
+      
       setCategories(extractDataFromResponse(response));
-    } catch (error) {
+    } catch (err: any) {
       apiLogger.categories({
         endpoint: 'getAllCategories',
         success: false,
         params: { page: 0, size: 50 },
-        error: error,
+        error: err,
       });
-      console.error('Error loading categories:', error);
+      
+      const status = err?.response?.status;
+      if (status === 403) {
+        setError('No tienes permisos para acceder a las categorías. Contacta con un administrador si necesitas acceso.');
+      } else if (status === 401) {
+        setError('Sesión expirada. Por favor, inicia sesión nuevamente.');
+      } else {
+        setError(err?.response?.data?.message || 'Error al cargar las categorías');
+      }
+      console.error('Error loading categories:', err);
     } finally {
       setLoading(false);
     }
@@ -58,6 +80,27 @@ export default function AdminCategoriesPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Categorías</h1>
+            <p className="text-muted-foreground">Gestiona todas las categorías del sistema</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <EmptyState
+              title="Error al cargar categorías"
+              description={error}
+            />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -99,13 +142,16 @@ export default function AdminCategoriesPage() {
             />
           ) : (
             <div className="space-y-4">
-              <div className="rounded-lg border">
+              <div className="rounded-lg border overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="px-4 py-3 text-left text-sm font-semibold">ID</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Nombre</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Icono</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Color</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Grupo</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Creado por</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Fecha de Creación</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Acciones</th>
                     </tr>
@@ -114,12 +160,15 @@ export default function AdminCategoriesPage() {
                     {filteredCategories.map((category) => (
                       <tr key={category.id} className="border-b hover:bg-muted/50 transition-colors">
                         <td className="px-4 py-3">
+                          <p className="text-xs font-mono text-muted-foreground">{category.id}</p>
+                        </td>
+                        <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20">
                               {category.icon ? (
-                                <span className="text-lg">{category.icon}</span>
+                                <span className="text-2xl">{category.icon}</span>
                               ) : (
-                                <Tag className="h-5 w-5 text-primary" />
+                                <Tag className="h-6 w-6 text-primary" />
                               )}
                             </div>
                             <div>
@@ -129,22 +178,43 @@ export default function AdminCategoriesPage() {
                         </td>
                         <td className="px-4 py-3">
                           {category.icon ? (
-                            <span className="text-lg">{category.icon}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl">{category.icon}</span>
+                              <span className="text-xs text-muted-foreground font-mono">{category.icon}</span>
+                            </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">Sin icono</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
                           {category.color ? (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3">
                               <div
-                                className="h-5 w-5 rounded-full border"
+                                className="h-8 w-8 rounded-lg border-2 shadow-sm"
                                 style={{ backgroundColor: category.color }}
                               />
-                              <span className="text-xs">{category.color}</span>
+                              <div>
+                                <p className="text-xs font-medium">{category.color}</p>
+                              </div>
                             </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">Sin color</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {category.groupName ? (
+                            <Link href={`/admin/groups/${category.groupId}`} className="text-sm text-primary hover:underline">
+                              {category.groupName}
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-muted-foreground font-mono">{category.groupId}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {category.createdByName ? (
+                            <span className="text-sm">{category.createdByName}</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground font-mono">{category.createdById}</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">

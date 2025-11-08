@@ -19,8 +19,9 @@ import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
 
 const createSubscriptionSchema = z.object({
-  userId: z.string().min(1, 'El usuario es requerido'),
-  planId: z.string().min(1, 'El plan es requerido'),
+  planType: z.enum(['FREE', 'PREMIUM', 'ENTERPRISE'], {
+    required_error: 'El tipo de plan es requerido',
+  }),
   paymentMethod: z.string().min(1, 'El método de pago es requerido'),
 });
 
@@ -40,14 +41,12 @@ export default function CreateSubscriptionPage() {
     resolver: zodResolver(createSubscriptionSchema),
   });
 
-  const selectedUserId = watch('userId');
-  const selectedPlanId = watch('planId');
+  const selectedPlanType = watch('planType');
 
   const onSubmit = async (data: CreateSubscriptionFormData) => {
     setIsLoading(true);
     const request: CreateSubscriptionRequest = {
-      userId: data.userId,
-      planId: data.planId,
+      planType: data.planType,
       paymentMethod: data.paymentMethod,
     };
     try {
@@ -97,42 +96,21 @@ export default function CreateSubscriptionPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="userId">Usuario</Label>
-              <AsyncPaginatedSelect<UserResponse>
-                value={selectedUserId}
-                onChange={(val) => setValue('userId', val)}
-                placeholder="Seleccionar usuario"
-                getOptionLabel={(u) => `${u.name} ${u.lastName} (${u.email})`}
-                getOptionValue={(u) => u.id}
-                fetchPage={async (page, size) => {
-                  const res = await adminApi.getAllUsers({ page, size });
-                  const data: any = res.data as any;
-                  return {
-                    items: Array.isArray(data?.content) ? (data.content as UserResponse[]) : [],
-                    total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
-                  };
-                }}
-              />
-              {errors.userId && <p className="text-sm text-destructive">{errors.userId.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="planId">Plan</Label>
-              <AsyncPaginatedSelect<PlanResponse>
-                value={selectedPlanId}
-                onChange={(val) => setValue('planId', val)}
-                placeholder="Seleccionar plan"
-                getOptionLabel={(p) => p.name}
-                getOptionValue={(p) => p.id}
-                fetchPage={async (page, size) => {
-                  const res = await adminApi.getAllPlans({ page, size });
-                  const data: any = res.data as any;
-                  return {
-                    items: Array.isArray(data?.content) ? (data.content as PlanResponse[]) : [],
-                    total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
-                  };
-                }}
-              />
-              {errors.planId && <p className="text-sm text-destructive">{errors.planId.message}</p>}
+              <Label htmlFor="planType">Tipo de Plan</Label>
+              <Select
+                value={selectedPlanType}
+                onValueChange={(val) => setValue('planType', val as 'FREE' | 'PREMIUM' | 'ENTERPRISE')}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar tipo de plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FREE">Free</SelectItem>
+                  <SelectItem value="PREMIUM">Premium</SelectItem>
+                  <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.planType && <p className="text-sm text-destructive">{errors.planType.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="paymentMethod">Método de Pago</Label>

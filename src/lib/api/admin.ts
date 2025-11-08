@@ -223,7 +223,18 @@ export const adminApi = {
     return response.data;
   },
   createMessage: async (data: SendMessageRequest): Promise<ApiResponse<MessageResponse>> => {
-    const response = await apiClient.instance.post('/admin/messages', data);
+    // Ensure conversationId is present and not empty
+    if (!data.conversationId || data.conversationId.trim() === '') {
+      throw new Error('Conversation ID is required');
+    }
+    // Ensure content is present and not empty
+    if (!data.content || data.content.trim() === '') {
+      throw new Error('Content is required');
+    }
+    const response = await apiClient.instance.post('/admin/messages', {
+      conversationId: data.conversationId,
+      content: data.content,
+    });
     return response.data;
   },
   updateMessage: async (id: string, data: UpdateMessageRequest): Promise<ApiResponse<MessageResponse>> => {
