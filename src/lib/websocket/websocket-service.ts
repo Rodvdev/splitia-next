@@ -42,13 +42,31 @@ class WebSocketService {
     // Obtener la URL base del API desde variables de entorno
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
     
-    // Remover /api si existe y construir URL de WebSocket
-    // http://localhost:8080/api -> http://localhost:8080/ws
-    // https://api.splitia.com/api -> https://api.splitia.com/ws
-    const baseUrl = API_URL.replace('/api', '');
+    // Detectar si la página está cargada sobre HTTPS
+    const isSecurePage = typeof window !== 'undefined' && window.location.protocol === 'https:';
+    
+    // Remover /api si existe y construir URL base
+    // http://localhost:8080/api -> http://localhost:8080
+    // https://api.splitia.com/api -> https://api.splitia.com
+    let baseUrl = API_URL.replace('/api', '');
+    
+    // Si la página es HTTPS, asegurar que la URL del WebSocket también use HTTPS
+    // Esto previene el error SecurityError cuando se intenta conectar HTTP desde HTTPS
+    if (isSecurePage) {
+      if (baseUrl.startsWith('http://')) {
+        // Actualizar HTTP a HTTPS cuando la página es HTTPS
+        baseUrl = baseUrl.replace('http://', 'https://');
+        console.log('🔒 Página HTTPS detectada. Actualizando URL del WebSocket a HTTPS');
+      } else if (!baseUrl.startsWith('http')) {
+        // Si no hay protocolo especificado y la página es HTTPS, usar HTTPS
+        baseUrl = `https://${baseUrl}`;
+        console.log('🔒 Página HTTPS detectada. Agregando protocolo HTTPS a la URL del WebSocket');
+      }
+    }
+    
     const wsUrl = `${baseUrl}/ws`;
 
-    console.log(`🔌 Inicializando WebSocket en: ${wsUrl}`);
+    console.log(`🔌 Inicializando WebSocket en: ${wsUrl}${isSecurePage ? ' (HTTPS seguro)' : ''}`);
 
     this.client = new Client({
       webSocketFactory: () => {
