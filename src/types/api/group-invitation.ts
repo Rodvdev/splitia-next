@@ -9,6 +9,10 @@ export interface GroupInvitationResponse {
   email?: string;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
   createdAt: string;
+  // New fields from targeted invitations feature
+  token?: string;
+  invitedUserId?: string;
+  invitedUserName?: string;
 }
 
 export interface CreateGroupInvitationRequest {
@@ -19,5 +23,13 @@ export interface CreateGroupInvitationRequest {
 
 export interface UpdateGroupInvitationRequest {
   status?: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+}
+
+// New targeted invitation request (groupId comes from path)
+export interface CreateTargetedGroupInvitationRequest {
+  email?: string;
+  userId?: string;
+  expiresAt?: string; // ISO string
+  maxUses?: number;
 }
 

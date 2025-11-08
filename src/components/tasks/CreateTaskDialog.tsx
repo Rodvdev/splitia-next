@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { tasksApi } from '@/lib/api/tasks';
 import { expensesApi } from '@/lib/api/expenses';
 import { groupsApi } from '@/lib/api/groups';
-import { CreateTaskRequest, TaskPriority, ExpenseResponse, ExpenseShareRequest, UserResponse } from '@/types';
+import { CreateTaskRequest, TaskPriority, ExpenseResponse, ExpenseShareRequest, UserResponse, TaskResponse } from '@/types';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
 import { DollarSign, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
@@ -56,7 +56,7 @@ interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groupId: string;
-  onSuccess?: () => void;
+  onSuccess?: (task?: TaskResponse) => void;
 }
 
 export function CreateTaskDialog({ open, onOpenChange, groupId, onSuccess }: CreateTaskDialogProps) {
@@ -166,7 +166,7 @@ export function CreateTaskDialog({ open, onOpenChange, groupId, onSuccess }: Cre
         toast.success('Tarea creada exitosamente');
         reset();
         onOpenChange(false);
-        onSuccess?.();
+        onSuccess?.(response.data);
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Error al crear la tarea');
