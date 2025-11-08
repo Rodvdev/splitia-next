@@ -39,8 +39,37 @@ class WebSocketService {
 
   private initializeClient() {
     // IMPORTANTE: SockJS usa HTTP/HTTPS, NO ws:// o wss://
+    // SockJS automáticamente usa WSS cuando la URL es HTTPS
+    // 
+    // Cómo funciona WSS con SockJS:
+    // - https://localhost:8080/ws -> SockJS usa WSS automáticamente
+    // - http://localhost:8080/ws -> SockJS usa WebSocket normal (no seguro)
+    // - NO uses wss:// directamente, usa https://
+    //
+    // Backend disponible en:
+    // - HTTPS: https://localhost:8080
+    // - WSS: wss://localhost:8080/ws (SockJS usa https://localhost:8080/ws)
+    //
+    // Configuración soportada:
+    // - https://localhost:8080 -> WSS (backend con SSL habilitado) ✅ RECOMENDADO
+    // - http://localhost:8080 -> HTTP (backend sin SSL, solo desarrollo)
+    // - https://api.splitia.com -> WSS (producción)
+    // - http://api.splitia.com (página HTTPS) -> se actualiza a HTTPS/WSS automáticamente
+    //
     // Obtener la URL base del API desde variables de entorno
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    // Para usar WSS en localhost, configura: NEXT_PUBLIC_API_URL=https://localhost:8080/api
+    let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    
+    // Convertir wss:// a https:// si alguien lo especifica por error
+    // SockJS no acepta wss:// directamente, necesita https://
+    if (API_URL.startsWith('wss://')) {
+      API_URL = API_URL.replace('wss://', 'https://');
+      console.warn('⚠️ wss:// detectado. Convertido a https:// (SockJS requiere https:// para WSS)');
+    }
+    if (API_URL.startsWith('ws://')) {
+      API_URL = API_URL.replace('ws://', 'http://');
+      console.warn('⚠️ ws:// detectado. Convertido a http:// (SockJS requiere http://)');
+    }
     
     // Detectar si la página está cargada sobre HTTPS
     const isSecurePage = typeof window !== 'undefined' && window.location.protocol === 'https:';
@@ -50,32 +79,39 @@ class WebSocketService {
     // https://api.splitia.com/api -> https://api.splitia.com
     let baseUrl = API_URL.replace('/api', '');
     
-    // CRÍTICO: Si es localhost, forzar HTTP (no HTTPS)
-    // Esto evita ERR_SSL_PROTOCOL_ERROR cuando la página es HTTPS pero el backend es HTTP
-    // Incluso si la variable de entorno tiene https://localhost, lo convertimos a http://
+    // Detectar si es localhost
     const isLocalhost = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
-    if (isLocalhost) {
-      baseUrl = baseUrl.replace(/^https:/i, 'http:');
-      console.log('🔧 Localhost detectado. Forzando HTTP para evitar errores SSL.');
-    }
     
-    // Si la página es HTTPS y NO es localhost, asegurar que la URL del WebSocket también use HTTPS
-    // Esto previene el error SecurityError cuando se intenta conectar HTTP desde HTTPS
-    if (isSecurePage && !isLocalhost) {
-      if (baseUrl.startsWith('http://')) {
-        // Actualizar HTTP a HTTPS cuando la página es HTTPS (solo para producción)
-        baseUrl = baseUrl.replace('http://', 'https://');
-        console.log('🔒 Página HTTPS detectada. Actualizando URL del WebSocket a HTTPS');
-      } else if (!baseUrl.startsWith('http')) {
-        // Si no hay protocolo especificado y la página es HTTPS, usar HTTPS
-        baseUrl = `https://${baseUrl}`;
-        console.log('🔒 Página HTTPS detectada. Agregando protocolo HTTPS a la URL del WebSocket');
-      }
+    // Detectar si la URL ya especifica HTTPS (backend con SSL habilitado)
+    const isExplicitlyHttps = baseUrl.startsWith('https://');
+    const isExplicitlyHttp = baseUrl.startsWith('http://');
+    
+    // Si la URL ya especifica HTTPS, respetarla (backend tiene SSL/WSS habilitado)
+    // Si es localhost con HTTP explícito, mantener HTTP (backend sin SSL)
+    // Si es producción con HTTP y página HTTPS, actualizar a HTTPS
+    if (isExplicitlyHttps) {
+      // URL ya especifica HTTPS - respetar configuración (backend tiene SSL/WSS)
+      console.log('🔒 URL HTTPS detectada. Usando WSS (WebSocket Secure).');
+    } else if (isLocalhost && isExplicitlyHttp) {
+      // Localhost con HTTP explícito - mantener HTTP (backend sin SSL)
+      console.log('🔧 Localhost HTTP detectado. Usando HTTP (backend sin SSL).');
+    } else if (isSecurePage && !isLocalhost && isExplicitlyHttp) {
+      // Producción con HTTP y página HTTPS - actualizar a HTTPS
+      baseUrl = baseUrl.replace('http://', 'https://');
+      console.log('🔒 Página HTTPS detectada. Actualizando URL del WebSocket a HTTPS/WSS');
+    } else if (isSecurePage && !baseUrl.startsWith('http')) {
+      // Sin protocolo especificado y página HTTPS - usar HTTPS
+      baseUrl = `https://${baseUrl}`;
+      console.log('🔒 Página HTTPS detectada. Agregando protocolo HTTPS/WSS a la URL del WebSocket');
     }
     
     const wsUrl = `${baseUrl}/ws`;
-
-    console.log(`🔌 Inicializando WebSocket en: ${wsUrl}${isSecurePage && !isLocalhost ? ' (HTTPS seguro)' : isLocalhost ? ' (HTTP localhost)' : ''}`);
+    const protocol = wsUrl.startsWith('https://') ? 'WSS (WebSocket Secure)' : 'HTTP';
+    const protocolNote = wsUrl.startsWith('https://') 
+      ? 'SockJS usará WSS automáticamente sobre HTTPS' 
+      : 'SockJS usará WebSocket normal sobre HTTP';
+    console.log(`🔌 Inicializando WebSocket en: ${wsUrl}`);
+    console.log(`   Protocolo: ${protocol} - ${protocolNote}`);
 
     this.client = new Client({
       webSocketFactory: () => {
