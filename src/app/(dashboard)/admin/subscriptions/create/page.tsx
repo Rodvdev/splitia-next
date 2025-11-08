@@ -2,22 +2,25 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
-import { CreateSubscriptionRequest } from '@/types';
+import { CreateSubscriptionRequest, UserResponse, PlanResponse } from '@/types';
+import AsyncPaginatedSelect from '@/components/common/AsyncPaginatedSelect';
 import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
 
 const createSubscriptionSchema = z.object({
-  planType: z.enum(['FREE', 'PREMIUM', 'ENTERPRISE'], { required_error: 'El tipo de plan es requerido' }),
+  userId: z.string().min(1, 'El usuario es requerido'),
+  planId: z.string().min(1, 'El plan es requerido'),
   paymentMethod: z.string().min(1, 'El método de pago es requerido'),
 });
 
@@ -29,15 +32,22 @@ export default function CreateSubscriptionPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<CreateSubscriptionFormData>({
     resolver: zodResolver(createSubscriptionSchema),
   });
 
+  const selectedUserId = watch('userId');
+  const selectedPlanId = watch('planId');
+
   const onSubmit = async (data: CreateSubscriptionFormData) => {
     setIsLoading(true);
     const request: CreateSubscriptionRequest = {
-      planType: data.planType,
+      userId: data.userId,
+      planId: data.planId,
       paymentMethod: data.paymentMethod,
     };
     try {
@@ -87,13 +97,42 @@ export default function CreateSubscriptionPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="planType">Tipo de Plan</Label>
-              <select id="planType" {...register('planType')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                <option value="FREE">Gratis</option>
-                <option value="PREMIUM">Premium</option>
-                <option value="ENTERPRISE">Enterprise</option>
-              </select>
-              {errors.planType && <p className="text-sm text-destructive">{errors.planType.message}</p>}
+              <Label htmlFor="userId">Usuario</Label>
+              <AsyncPaginatedSelect<UserResponse>
+                value={selectedUserId}
+                onChange={(val) => setValue('userId', val)}
+                placeholder="Seleccionar usuario"
+                getOptionLabel={(u) => `${u.name} ${u.lastName} (${u.email})`}
+                getOptionValue={(u) => u.id}
+                fetchPage={async (page, size) => {
+                  const res = await adminApi.getAllUsers({ page, size });
+                  const data: any = res.data as any;
+                  return {
+                    items: Array.isArray(data?.content) ? (data.content as UserResponse[]) : [],
+                    total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
+                  };
+                }}
+              />
+              {errors.userId && <p className="text-sm text-destructive">{errors.userId.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="planId">Plan</Label>
+              <AsyncPaginatedSelect<PlanResponse>
+                value={selectedPlanId}
+                onChange={(val) => setValue('planId', val)}
+                placeholder="Seleccionar plan"
+                getOptionLabel={(p) => p.name}
+                getOptionValue={(p) => p.id}
+                fetchPage={async (page, size) => {
+                  const res = await adminApi.getAllPlans({ page, size });
+                  const data: any = res.data as any;
+                  return {
+                    items: Array.isArray(data?.content) ? (data.content as PlanResponse[]) : [],
+                    total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
+                  };
+                }}
+              />
+              {errors.planId && <p className="text-sm text-destructive">{errors.planId.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="paymentMethod">Método de Pago</Label>

@@ -21,6 +21,15 @@ import {
   CheckSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { Menu } from 'lucide-react';
+import { useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -56,14 +65,13 @@ const adminNavigation = [
   { name: 'Miembros', href: '/admin/group-users', icon: UserCheck },
 ];
 
-export function Sidebar() {
+function SidebarContent() {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
-
   const navItems = isAdmin ? adminNavigation : navigation;
 
   return (
-    <aside className="w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border h-screen fixed left-0 top-0 overflow-y-auto">
+    <>
       <div className="p-4">
         <h2 className="text-xl font-bold mb-6">Splitia</h2>
         <nav className="space-y-2">
@@ -88,7 +96,37 @@ export function Sidebar() {
           })}
         </nav>
       </div>
+    </>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="hidden md:block w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border h-screen fixed left-0 top-0 overflow-y-auto">
+      <SidebarContent />
     </aside>
+  );
+}
+
+export function SidebarTrigger() {
+  const isMobile = useIsMobile();
+  const [open, setOpen] = useState(false);
+
+  if (!isMobile) return null;
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="flex-shrink-0">
+          <Menu className="h-5 w-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-64 p-0 bg-sidebar text-sidebar-foreground border-sidebar-border">
+        <div className="h-full overflow-y-auto">
+          <SidebarContent />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -65,14 +65,14 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Usuarios</h1>
-          <p className="text-muted-foreground">Gestiona todos los usuarios del sistema</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Usuarios</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Gestiona todos los usuarios del sistema</p>
         </div>
-        <Link href="/admin/users/create">
-          <Button>
+        <Link href="/admin/users/create" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Crear Usuario
           </Button>
@@ -81,14 +81,14 @@ export default function AdminUsersPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nombre, email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 text-sm sm:text-base"
               />
             </div>
           </div>
@@ -101,7 +101,55 @@ export default function AdminUsersPage() {
             />
           ) : (
             <div className="space-y-4">
-              <div className="rounded-lg border">
+              {/* Mobile Card View */}
+              <div className="block md:hidden space-y-3">
+                {filteredUsers.map((user) => (
+                  <Card key={user.id}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center gap-3 pb-3 border-b">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <span className="text-sm font-semibold">
+                            {user.name[0]}{user.lastName[0]}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{user.name} {user.lastName}</p>
+                          {user.phoneNumber && (
+                            <p className="text-xs text-muted-foreground truncate">{user.phoneNumber}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Email:</span>
+                          <span className="text-right break-all">{user.email}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Moneda:</span>
+                          <Badge variant="outline">{user.currency}</Badge>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Idioma:</span>
+                          <Badge variant="outline">{user.language}</Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Registro:</span>
+                          <span className="text-right">{formatDate(user.createdAt, 'PP', 'es')}</span>
+                        </div>
+                        <div className="pt-2">
+                          <Link href={`/admin/users/${user.id}`} className="w-full">
+                            <Button variant="outline" size="sm" className="w-full">
+                              Ver Detalles
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              {/* Desktop Table View */}
+              <div className="hidden md:block rounded-lg border overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">

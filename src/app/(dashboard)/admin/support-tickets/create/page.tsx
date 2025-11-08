@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
@@ -33,6 +34,7 @@ export default function CreateSupportTicketPage() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<CreateSupportTicketFormData>({
     resolver: zodResolver(createSupportTicketSchema),
@@ -105,25 +107,47 @@ export default function CreateSupportTicketPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="category">Categoría</Label>
-                <select id="category" {...register('category')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  <option value="TECHNICAL">Técnico</option>
-                  <option value="BILLING">Facturación</option>
-                  <option value="FEATURE_REQUEST">Solicitud</option>
-                  <option value="BUG_REPORT">Error</option>
-                  <option value="ACCOUNT">Cuenta</option>
-                  <option value="GENERAL">General</option>
-                </select>
+                <Controller
+                  name="category"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="TECHNICAL">Técnico</SelectItem>
+                        <SelectItem value="BILLING">Facturación</SelectItem>
+                        <SelectItem value="FEATURE_REQUEST">Solicitud</SelectItem>
+                        <SelectItem value="BUG_REPORT">Error</SelectItem>
+                        <SelectItem value="ACCOUNT">Cuenta</SelectItem>
+                        <SelectItem value="GENERAL">General</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {errors.category && <p className="text-sm text-destructive">{errors.category.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="priority">Prioridad (opcional)</Label>
-                <select id="priority" {...register('priority')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  <option value="">Seleccionar...</option>
-                  <option value="LOW">Baja</option>
-                  <option value="MEDIUM">Media</option>
-                  <option value="HIGH">Alta</option>
-                  <option value="URGENT">Urgente</option>
-                </select>
+                <Controller
+                  name="priority"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar prioridad" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Seleccionar...</SelectItem>
+                        <SelectItem value="LOW">Baja</SelectItem>
+                        <SelectItem value="MEDIUM">Media</SelectItem>
+                        <SelectItem value="HIGH">Alta</SelectItem>
+                        <SelectItem value="URGENT">Urgente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </div>
             <div className="flex gap-2">

@@ -104,11 +104,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-muted p-3 sm:p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Iniciar Sesión</CardTitle>
-          <CardDescription>Ingresa tus credenciales para acceder a tu cuenta</CardDescription>
+          <CardTitle className="text-xl sm:text-2xl">Iniciar Sesión</CardTitle>
+          <CardDescription className="text-sm sm:text-base">Ingresa tus credenciales para acceder a tu cuenta</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -119,9 +119,10 @@ export default function LoginPage() {
                 type="email"
                 placeholder="tu@email.com"
                 {...register('email')}
+                className="text-base sm:text-sm"
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-xs sm:text-sm text-destructive">{errors.email.message}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -130,12 +131,13 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 {...register('password')}
+                className="text-base sm:text-sm"
               />
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
+                <p className="text-xs sm:text-sm text-destructive">{errors.password.message}</p>
               )}
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full text-base sm:text-sm" disabled={isLoading}>
               {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </Button>
             
@@ -155,7 +157,7 @@ export default function LoginPage() {
                 variant="outline"
                 onClick={() => handleDemoLogin('admin@demo.com', 'demo123')}
                 disabled={isLoading}
-                className="text-sm"
+                className="text-xs sm:text-sm"
               >
                 🔑 Admin Demo
               </Button>
@@ -164,13 +166,13 @@ export default function LoginPage() {
                 variant="outline"
                 onClick={() => handleDemoLogin('user@demo.com', 'demo123')}
                 disabled={isLoading}
-                className="text-sm"
+                className="text-xs sm:text-sm"
               >
                 👤 User Demo
               </Button>
             </div>
             
-            <div className="text-center text-sm">
+            <div className="text-center text-xs sm:text-sm">
               <span className="text-muted-foreground">¿No tienes cuenta? </span>
               <Link href="/register" className="text-primary hover:underline">
                 Regístrate

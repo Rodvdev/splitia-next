@@ -36,11 +36,12 @@ export function QuickActions() {
           <Button
             key={action.href}
             variant={action.variant}
-            className="gap-2"
+            className="gap-2 text-xs sm:text-sm"
             onClick={() => router.push(action.href)}
           >
-            <Icon className="h-4 w-4" />
-            {action.label}
+            <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">{action.label}</span>
+            <span className="sm:hidden">{action.label.split(' ')[0]}</span>
           </Button>
         );
       })}

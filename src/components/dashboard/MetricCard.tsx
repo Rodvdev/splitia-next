@@ -44,37 +44,37 @@ export function MetricCard({
       onClick={onClick}
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <div className={cn(
-            'p-2 rounded-lg',
+            'p-1.5 sm:p-2 rounded-lg flex-shrink-0',
             variant === 'success' && 'bg-success/10',
             variant === 'warning' && 'bg-warning/10',
             variant === 'danger' && 'bg-destructive/10',
             variant === 'default' && 'bg-primary/10'
           )}>
             <Icon className={cn(
-              'h-4 w-4',
+              'h-3 w-3 sm:h-4 sm:w-4',
               variant === 'success' && 'text-success',
               variant === 'warning' && 'text-warning',
               variant === 'danger' && 'text-destructive',
               variant === 'default' && 'text-primary'
             )} />
           </div>
-          <span className="text-sm font-medium text-muted-foreground">{title}</span>
+          <span className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{title}</span>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-1">
-          <div className="text-2xl font-bold">{value}</div>
+          <div className="text-xl sm:text-2xl font-bold break-words">{value}</div>
           {description && (
             <p className="text-xs text-muted-foreground">{description}</p>
           )}
           {trend && (
             <div className="flex items-center gap-1 text-xs">
               {trend.isPositive ? (
-                <TrendingUp className="h-3 w-3 text-success" />
+                <TrendingUp className="h-3 w-3 text-success flex-shrink-0" />
               ) : (
-                <TrendingDown className="h-3 w-3 text-destructive" />
+                <TrendingDown className="h-3 w-3 text-destructive flex-shrink-0" />
               )}
               <span className={cn(
                 trend.isPositive ? 'text-success' : 'text-destructive'

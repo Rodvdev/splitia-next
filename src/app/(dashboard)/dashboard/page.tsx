@@ -275,20 +275,20 @@ export default function DashboardPage() {
   const expensesTrend = calculateTrend(totalExpenses, previousMonthExpenses);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header con saludo personalizado */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl sm:text-3xl font-bold">
             Hola, {user?.name || 'Usuario'} 👋
           </h1>
-          <p className="text-muted-foreground mt-1 capitalize">{currentDate}</p>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1 capitalize">{currentDate}</p>
         </div>
         <QuickActions />
       </div>
 
       {/* KPIs principales - Priorizados visualmente */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Gastos Totales"
           value={formatCurrency(totalExpenses)}
@@ -328,13 +328,13 @@ export default function DashboardPage() {
       </div>
 
       {/* Visualizaciones - Gráficos comprensibles */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
         <ExpenseChart data={expenseChartData} period="week" />
         <CategoryChart data={categoryChartData} />
       </div>
 
       {/* Información contextual - Gastos recientes y grupos */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Gastos Recientes</CardTitle>

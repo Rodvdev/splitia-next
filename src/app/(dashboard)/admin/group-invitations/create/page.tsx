@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
-import { CreateGroupInvitationRequest } from '@/types';
+import { CreateGroupInvitationRequest, GroupResponse, UserResponse } from '@/types';
+import AsyncPaginatedSelect from '@/components/common/AsyncPaginatedSelect';
 import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
 
@@ -33,10 +34,15 @@ export default function CreateGroupInvitationPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateGroupInvitationFormData>({
     resolver: zodResolver(createGroupInvitationSchema),
   });
+
+  const selectedGroupId = watch('groupId');
+  const selectedUserId = watch('userId');
 
   const onSubmit = async (data: CreateGroupInvitationFormData) => {
     setIsLoading(true);
@@ -92,8 +98,22 @@ export default function CreateGroupInvitationPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="groupId">ID del Grupo</Label>
-              <Input id="groupId" placeholder="UUID del grupo" {...register('groupId')} />
+              <Label htmlFor="groupId">Grupo</Label>
+              <AsyncPaginatedSelect<GroupResponse>
+                value={selectedGroupId}
+                onChange={(val) => setValue('groupId', val)}
+                placeholder="Seleccionar grupo"
+                getOptionLabel={(g) => g.name}
+                getOptionValue={(g) => g.id}
+                fetchPage={async (page, size) => {
+                  const res = await adminApi.getAllGroups({ page, size });
+                  const data: any = res.data as any;
+                  return {
+                    items: Array.isArray(data?.content) ? (data.content as GroupResponse[]) : [],
+                    total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
+                  };
+                }}
+              />
               {errors.groupId && <p className="text-sm text-destructive">{errors.groupId.message}</p>}
             </div>
             <div className="space-y-2">
@@ -102,8 +122,22 @@ export default function CreateGroupInvitationPage() {
               {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="userId">ID del Usuario (opcional si se proporciona email)</Label>
-              <Input id="userId" placeholder="UUID del usuario" {...register('userId')} />
+              <Label htmlFor="userId">Usuario (opcional si se proporciona email)</Label>
+              <AsyncPaginatedSelect<UserResponse>
+                value={selectedUserId}
+                onChange={(val) => setValue('userId', val)}
+                placeholder="Seleccionar usuario"
+                getOptionLabel={(u) => `${u.name} ${u.lastName} (${u.email})`}
+                getOptionValue={(u) => u.id}
+                fetchPage={async (page, size) => {
+                  const res = await adminApi.getAllUsers({ page, size });
+                  const data: any = res.data as any;
+                  return {
+                    items: Array.isArray(data?.content) ? (data.content as UserResponse[]) : [],
+                    total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
+                  };
+                }}
+              />
               {errors.userId && <p className="text-sm text-destructive">{errors.userId.message}</p>}
             </div>
             <div className="flex gap-2">

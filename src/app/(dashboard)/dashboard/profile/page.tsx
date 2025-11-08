@@ -49,17 +49,17 @@ export default function ProfilePage() {
 
   if (error || !user) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Perfil</h1>
-          <p className="text-muted-foreground">Gestiona tu información personal</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Perfil</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Gestiona tu información personal</p>
         </div>
         <Card>
-          <CardContent className="p-6">
-            <p className="text-destructive">
+          <CardContent className="p-4 sm:p-6">
+            <p className="text-sm sm:text-base text-destructive">
               {error || 'No se pudo cargar la información del perfil'}
             </p>
-            <Button onClick={loadUser} className="mt-4">
+            <Button onClick={loadUser} className="mt-4 w-full sm:w-auto">
               Reintentar
             </Button>
           </CardContent>
@@ -69,21 +69,21 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Perfil</h1>
-          <p className="text-muted-foreground">Gestiona tu información personal</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Perfil</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Gestiona tu información personal</p>
         </div>
-        <Link href="/dashboard/profile/edit">
-          <Button>
+        <Link href="/dashboard/profile/edit" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             <Edit className="h-4 w-4 mr-2" />
             Editar Perfil
           </Button>
         </Link>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Información Personal</CardTitle>

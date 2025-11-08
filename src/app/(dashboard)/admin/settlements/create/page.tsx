@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
@@ -16,6 +17,19 @@ import { CreateSettlementRequest, UserResponse } from '@/types';
 import AsyncPaginatedSelect from '@/components/common/AsyncPaginatedSelect';
 import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
+
+const CURRENCIES = [
+  { value: 'USD', label: 'USD - Dólar Estadounidense' },
+  { value: 'EUR', label: 'EUR - Euro' },
+  { value: 'MXN', label: 'MXN - Peso Mexicano' },
+  { value: 'GBP', label: 'GBP - Libra Esterlina' },
+  { value: 'JPY', label: 'JPY - Yen Japonés' },
+  { value: 'CAD', label: 'CAD - Dólar Canadiense' },
+  { value: 'AUD', label: 'AUD - Dólar Australiano' },
+  { value: 'CHF', label: 'CHF - Franco Suizo' },
+  { value: 'CNY', label: 'CNY - Yuan Chino' },
+  { value: 'BRL', label: 'BRL - Real Brasileño' },
+];
 
 const createSettlementSchema = z.object({
   amount: z.number().min(0.01, 'El monto debe ser mayor a 0'),
@@ -35,6 +49,7 @@ export default function CreateSettlementPage() {
     handleSubmit,
     watch,
     setValue,
+    control,
     formState: { errors },
   } = useForm<CreateSettlementFormData>({
     resolver: zodResolver(createSettlementSchema),
@@ -105,7 +120,24 @@ export default function CreateSettlementPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="currency">Moneda</Label>
-                <Input id="currency" placeholder="USD" {...register('currency')} />
+                <Controller
+                  name="currency"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar moneda" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CURRENCIES.map((currency) => (
+                          <SelectItem key={currency.value} value={currency.value}>
+                            {currency.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {errors.currency && <p className="text-sm text-destructive">{errors.currency.message}</p>}
               </div>
             </div>
@@ -135,10 +167,21 @@ export default function CreateSettlementPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="type">Tipo</Label>
-                <select id="type" {...register('type')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  <option value="PAYMENT">Pago</option>
-                  <option value="RECEIPT">Recibo</option>
-                </select>
+                <Controller
+                  name="type"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PAYMENT">Pago</SelectItem>
+                        <SelectItem value="RECEIPT">Recibo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {errors.type && <p className="text-sm text-destructive">{errors.type.message}</p>}
               </div>
             </div>

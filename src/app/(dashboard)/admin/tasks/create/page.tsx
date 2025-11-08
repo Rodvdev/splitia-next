@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import Link from 'next/link';
@@ -297,19 +298,25 @@ export default function CreateTaskPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="assignedToId">Asignado a (opcional)</Label>
-                <select
-                  id="assignedToId"
-                  {...register('assignedToId')}
-                  disabled={!selectedGroupId}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Sin asignar</option>
-                  {groupMembers.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.name} {member.lastName} ({member.email})
-                    </option>
-                  ))}
-                </select>
+                <Controller
+                  name="assignedToId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedGroupId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={selectedGroupId ? "Seleccionar usuario" : "Selecciona un grupo primero"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Sin asignar</SelectItem>
+                        {groupMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.name} {member.lastName} ({member.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {!selectedGroupId && (
                   <p className="text-xs text-muted-foreground">Selecciona un grupo primero</p>
                 )}
@@ -318,17 +325,24 @@ export default function CreateTaskPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="priority">Prioridad (opcional)</Label>
-                <select
-                  id="priority"
-                  {...register('priority')}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Seleccionar prioridad</option>
-                  <option value="LOW">Baja</option>
-                  <option value="MEDIUM">Media</option>
-                  <option value="HIGH">Alta</option>
-                  <option value="URGENT">Urgente</option>
-                </select>
+                <Controller
+                  name="priority"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar prioridad" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Seleccionar prioridad</SelectItem>
+                        <SelectItem value="LOW">Baja</SelectItem>
+                        <SelectItem value="MEDIUM">Media</SelectItem>
+                        <SelectItem value="HIGH">Alta</SelectItem>
+                        <SelectItem value="URGENT">Urgente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -483,17 +497,24 @@ export default function CreateTaskPage() {
                         <div key={field.id} className="flex gap-2 items-end">
                           <div className="flex-1 space-y-2">
                             <Label>Usuario</Label>
-                            <select
-                              {...register(`futureExpenseShares.${index}.userId`)}
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            >
-                              <option value="">Seleccionar</option>
-                              {groupMembers.map((member) => (
-                                <option key={member.id} value={member.id}>
-                                  {member.name} {member.lastName}
-                                </option>
-                              ))}
-                            </select>
+                            <Controller
+                              name={`futureExpenseShares.${index}.userId`}
+                              control={control}
+                              render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {groupMembers.map((member) => (
+                                      <SelectItem key={member.id} value={member.id}>
+                                        {member.name} {member.lastName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
                           </div>
                           <div className="flex-1 space-y-2">
                             <Label>Monto</Label>
@@ -506,14 +527,22 @@ export default function CreateTaskPage() {
                           </div>
                           <div className="flex-1 space-y-2">
                             <Label>Tipo</Label>
-                            <select
-                              {...register(`futureExpenseShares.${index}.type`)}
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            >
-                              <option value="FIXED">Fijo</option>
-                              <option value="EQUAL">Igual</option>
-                              <option value="PERCENTAGE">Porcentaje</option>
-                            </select>
+                            <Controller
+                              name={`futureExpenseShares.${index}.type`}
+                              control={control}
+                              render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar tipo" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="FIXED">Fijo</SelectItem>
+                                    <SelectItem value="EQUAL">Igual</SelectItem>
+                                    <SelectItem value="PERCENTAGE">Porcentaje</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
                           </div>
                           <Button
                             type="button"

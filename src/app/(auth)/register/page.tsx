@@ -92,52 +92,52 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-muted p-3 sm:p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Crear Cuenta</CardTitle>
-          <CardDescription>Completa el formulario para crear tu cuenta</CardDescription>
+          <CardTitle className="text-xl sm:text-2xl">Crear Cuenta</CardTitle>
+          <CardDescription className="text-sm sm:text-base">Completa el formulario para crear tu cuenta</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre</Label>
-                <Input id="name" {...register('name')} />
+                <Input id="name" {...register('name')} className="text-base sm:text-sm" />
                 {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                  <p className="text-xs sm:text-sm text-destructive">{errors.name.message}</p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Apellido</Label>
-                <Input id="lastName" {...register('lastName')} />
+                <Input id="lastName" {...register('lastName')} className="text-base sm:text-sm" />
                 {errors.lastName && (
-                  <p className="text-sm text-destructive">{errors.lastName.message}</p>
+                  <p className="text-xs sm:text-sm text-destructive">{errors.lastName.message}</p>
                 )}
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="tu@email.com" {...register('email')} />
+              <Input id="email" type="email" placeholder="tu@email.com" {...register('email')} className="text-base sm:text-sm" />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-xs sm:text-sm text-destructive">{errors.email.message}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
-              <Input id="password" type="password" {...register('password')} />
+              <Input id="password" type="password" {...register('password')} className="text-base sm:text-sm" />
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
+                <p className="text-xs sm:text-sm text-destructive">{errors.password.message}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="phoneNumber">Teléfono (opcional)</Label>
-              <Input id="phoneNumber" type="tel" {...register('phoneNumber')} />
+              <Input id="phoneNumber" type="tel" {...register('phoneNumber')} className="text-base sm:text-sm" />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full text-base sm:text-sm" disabled={isLoading}>
               {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
             </Button>
-            <div className="text-center text-sm">
+            <div className="text-center text-xs sm:text-sm">
               <span className="text-muted-foreground">¿Ya tienes cuenta? </span>
               <Link href="/login" className="text-primary hover:underline">
                 Inicia sesión

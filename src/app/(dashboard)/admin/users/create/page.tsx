@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
@@ -29,12 +30,41 @@ const createUserSchema = z.object({
 
 type CreateUserFormData = z.infer<typeof createUserSchema>;
 
+const CURRENCIES = [
+  { value: 'USD', label: 'USD - Dólar Estadounidense' },
+  { value: 'EUR', label: 'EUR - Euro' },
+  { value: 'MXN', label: 'MXN - Peso Mexicano' },
+  { value: 'GBP', label: 'GBP - Libra Esterlina' },
+  { value: 'JPY', label: 'JPY - Yen Japonés' },
+  { value: 'CAD', label: 'CAD - Dólar Canadiense' },
+  { value: 'AUD', label: 'AUD - Dólar Australiano' },
+  { value: 'CHF', label: 'CHF - Franco Suizo' },
+  { value: 'CNY', label: 'CNY - Yuan Chino' },
+  { value: 'BRL', label: 'BRL - Real Brasileño' },
+];
+
+const LANGUAGES = [
+  { value: 'es', label: 'Español' },
+  { value: 'en', label: 'English' },
+  { value: 'fr', label: 'Français' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'pt', label: 'Português' },
+  { value: 'it', label: 'Italiano' },
+];
+
+const ROLES = [
+  { value: 'USER', label: 'Usuario' },
+  { value: 'ADMIN', label: 'Administrador' },
+  { value: 'SUPER_ADMIN', label: 'Super Administrador' },
+];
+
 export default function CreateUserPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<CreateUserFormData>({
     resolver: zodResolver(createUserSchema),
@@ -131,16 +161,67 @@ export default function CreateUserPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="currency">Moneda</Label>
-                <Input id="currency" placeholder="USD" {...register('currency')} />
+                <Controller
+                  name="currency"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar moneda" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CURRENCIES.map((currency) => (
+                          <SelectItem key={currency.value} value={currency.value}>
+                            {currency.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="language">Idioma</Label>
-                <Input id="language" placeholder="es" {...register('language')} />
+                <Controller
+                  name="language"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar idioma" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGES.map((language) => (
+                          <SelectItem key={language.value} value={language.value}>
+                            {language.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Rol (opcional)</Label>
-              <Input id="role" placeholder="USER" {...register('role')} />
+              <Controller
+                name="role"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar rol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map((role) => (
+                        <SelectItem key={role.value} value={role.value}>
+                          {role.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={isLoading}>

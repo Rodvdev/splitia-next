@@ -1,20 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
-import { CreateGroupUserRequest } from '@/types';
+import { CreateGroupUserRequest, GroupResponse, UserResponse } from '@/types';
+import AsyncPaginatedSelect from '@/components/common/AsyncPaginatedSelect';
 import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
+import { extractDataFromResponse } from '@/lib/utils/api-response';
 
 const createGroupUserSchema = z.object({
   groupId: z.string().min(1, 'El ID del grupo es requerido'),
@@ -30,6 +33,9 @@ export default function CreateGroupUserPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<CreateGroupUserFormData>({
     resolver: zodResolver(createGroupUserSchema),
@@ -37,6 +43,9 @@ export default function CreateGroupUserPage() {
       role: 'MEMBER',
     },
   });
+
+  const selectedGroupId = watch('groupId');
+  const selectedUserId = watch('userId');
 
   const onSubmit = async (data: CreateGroupUserFormData) => {
     setIsLoading(true);
@@ -92,23 +101,62 @@ export default function CreateGroupUserPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="groupId">ID del Grupo</Label>
-              <Input id="groupId" placeholder="UUID del grupo" {...register('groupId')} />
+              <Label htmlFor="groupId">Grupo</Label>
+              <AsyncPaginatedSelect<GroupResponse>
+                value={selectedGroupId}
+                onChange={(val) => setValue('groupId', val)}
+                placeholder="Seleccionar grupo"
+                getOptionLabel={(g) => g.name}
+                getOptionValue={(g) => g.id}
+                fetchPage={async (page, size) => {
+                  const res = await adminApi.getAllGroups({ page, size });
+                  const data: any = res.data as any;
+                  return {
+                    items: Array.isArray(data?.content) ? (data.content as GroupResponse[]) : [],
+                    total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
+                  };
+                }}
+              />
               {errors.groupId && <p className="text-sm text-destructive">{errors.groupId.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="userId">ID del Usuario</Label>
-              <Input id="userId" placeholder="UUID del usuario" {...register('userId')} />
+              <Label htmlFor="userId">Usuario</Label>
+              <AsyncPaginatedSelect<UserResponse>
+                value={selectedUserId}
+                onChange={(val) => setValue('userId', val)}
+                placeholder="Seleccionar usuario"
+                getOptionLabel={(u) => `${u.name} ${u.lastName} (${u.email})`}
+                getOptionValue={(u) => u.id}
+                fetchPage={async (page, size) => {
+                  const res = await adminApi.getAllUsers({ page, size });
+                  const data: any = res.data as any;
+                  return {
+                    items: Array.isArray(data?.content) ? (data.content as UserResponse[]) : [],
+                    total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
+                  };
+                }}
+              />
               {errors.userId && <p className="text-sm text-destructive">{errors.userId.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Rol</Label>
-              <select id="role" {...register('role')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                <option value="MEMBER">Miembro</option>
-                <option value="ADMIN">Administrador</option>
-                <option value="GUEST">Invitado</option>
-                <option value="ASSISTANT">Asistente</option>
-              </select>
+              <Controller
+                name="role"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar rol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MEMBER">Miembro</SelectItem>
+                      <SelectItem value="ADMIN">Administrador</SelectItem>
+                      <SelectItem value="GUEST">Invitado</SelectItem>
+                      <SelectItem value="ASSISTANT">Asistente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={isLoading}>

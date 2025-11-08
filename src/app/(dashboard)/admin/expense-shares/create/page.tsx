@@ -1,18 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
-import { CreateExpenseShareRequest } from '@/types';
+import { CreateExpenseShareRequest, ExpenseResponse, UserResponse } from '@/types';
+import AsyncPaginatedSelect from '@/components/common/AsyncPaginatedSelect';
 import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
 
@@ -33,10 +35,16 @@ export default function CreateExpenseSharePage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<CreateExpenseShareFormData>({
     resolver: zodResolver(createExpenseShareSchema),
   });
+
+  const selectedExpenseId = watch('expenseId');
+  const selectedUserId = watch('userId');
 
   const onSubmit = async (data: CreateExpenseShareFormData) => {
     setIsLoading(true);
@@ -93,13 +101,41 @@ export default function CreateExpenseSharePage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="expenseId">ID del Gasto</Label>
-              <Input id="expenseId" placeholder="UUID del gasto" {...register('expenseId')} />
+              <Label htmlFor="expenseId">Gasto</Label>
+              <AsyncPaginatedSelect<ExpenseResponse>
+                value={selectedExpenseId}
+                onChange={(val) => setValue('expenseId', val)}
+                placeholder="Seleccionar gasto"
+                getOptionLabel={(e) => `${e.description} - $${e.amount}`}
+                getOptionValue={(e) => e.id}
+                fetchPage={async (page, size) => {
+                  const res = await adminApi.getAllExpenses({ page, size });
+                  const data: any = res.data as any;
+                  return {
+                    items: Array.isArray(data?.content) ? (data.content as ExpenseResponse[]) : [],
+                    total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
+                  };
+                }}
+              />
               {errors.expenseId && <p className="text-sm text-destructive">{errors.expenseId.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="userId">ID del Usuario</Label>
-              <Input id="userId" placeholder="UUID del usuario" {...register('userId')} />
+              <Label htmlFor="userId">Usuario</Label>
+              <AsyncPaginatedSelect<UserResponse>
+                value={selectedUserId}
+                onChange={(val) => setValue('userId', val)}
+                placeholder="Seleccionar usuario"
+                getOptionLabel={(u) => `${u.name} ${u.lastName} (${u.email})`}
+                getOptionValue={(u) => u.id}
+                fetchPage={async (page, size) => {
+                  const res = await adminApi.getAllUsers({ page, size });
+                  const data: any = res.data as any;
+                  return {
+                    items: Array.isArray(data?.content) ? (data.content as UserResponse[]) : [],
+                    total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
+                  };
+                }}
+              />
               {errors.userId && <p className="text-sm text-destructive">{errors.userId.message}</p>}
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -110,11 +146,22 @@ export default function CreateExpenseSharePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="type">Tipo</Label>
-                <select id="type" {...register('type')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  <option value="EQUAL">Igual</option>
-                  <option value="PERCENTAGE">Porcentaje</option>
-                  <option value="FIXED">Fijo</option>
-                </select>
+                <Controller
+                  name="type"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="EQUAL">Igual</SelectItem>
+                        <SelectItem value="PERCENTAGE">Porcentaje</SelectItem>
+                        <SelectItem value="FIXED">Fijo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {errors.type && <p className="text-sm text-destructive">{errors.type.message}</p>}
               </div>
             </div>

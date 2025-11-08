@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { adminApi } from '@/lib/api/admin';
 import { UserResponse, UpdateUserRequest } from '@/types';
@@ -19,6 +20,34 @@ import Link from 'next/link';
 import { formatDate } from '@/lib/utils/format';
 import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
+
+const CURRENCIES = [
+  { value: 'USD', label: 'USD - Dólar Estadounidense' },
+  { value: 'EUR', label: 'EUR - Euro' },
+  { value: 'MXN', label: 'MXN - Peso Mexicano' },
+  { value: 'GBP', label: 'GBP - Libra Esterlina' },
+  { value: 'JPY', label: 'JPY - Yen Japonés' },
+  { value: 'CAD', label: 'CAD - Dólar Canadiense' },
+  { value: 'AUD', label: 'AUD - Dólar Australiano' },
+  { value: 'CHF', label: 'CHF - Franco Suizo' },
+  { value: 'CNY', label: 'CNY - Yuan Chino' },
+  { value: 'BRL', label: 'BRL - Real Brasileño' },
+];
+
+const LANGUAGES = [
+  { value: 'es', label: 'Español' },
+  { value: 'en', label: 'English' },
+  { value: 'fr', label: 'Français' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'pt', label: 'Português' },
+  { value: 'it', label: 'Italiano' },
+];
+
+const ROLES = [
+  { value: 'USER', label: 'Usuario' },
+  { value: 'ADMIN', label: 'Administrador' },
+  { value: 'SUPER_ADMIN', label: 'Super Administrador' },
+];
 
 const updateUserSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
@@ -47,6 +76,7 @@ export default function UserDetailPage() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<UpdateUserFormData>({
     resolver: zodResolver(updateUserSchema),
@@ -303,16 +333,67 @@ export default function UserDetailPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="currency">Moneda</Label>
-                  <Input id="currency" {...register('currency')} />
+                  <Controller
+                    name="currency"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar moneda" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CURRENCIES.map((currency) => (
+                            <SelectItem key={currency.value} value={currency.value}>
+                              {currency.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="language">Idioma</Label>
-                  <Input id="language" {...register('language')} />
+                  <Controller
+                    name="language"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar idioma" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LANGUAGES.map((language) => (
+                            <SelectItem key={language.value} value={language.value}>
+                              {language.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Rol</Label>
-                <Input id="role" {...register('role')} />
+                <Controller
+                  name="role"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar rol" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLES.map((role) => (
+                          <SelectItem key={role.value} value={role.value}>
+                            {role.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
               <div className="flex gap-2">
                 <Button type="submit" disabled={isSaving}>

@@ -30,7 +30,7 @@ export function CategoryChart({ data }: CategoryChartProps) {
       </CardHeader>
       <CardContent>
         {data.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
             <PieChart>
               <Pie
                 data={data}
@@ -63,7 +63,7 @@ export function CategoryChart({ data }: CategoryChartProps) {
             </PieChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+          <div className="flex items-center justify-center h-[250px] sm:h-[300px] text-muted-foreground text-sm">
             No hay datos disponibles
           </div>
         )}

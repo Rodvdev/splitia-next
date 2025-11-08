@@ -161,39 +161,39 @@ export default function LandingPage() {
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-b from-primary/10 via-background to-background">
-        <div className="container mx-auto px-4 py-20 md:py-32">
+        <div className="container mx-auto px-4 py-12 sm:py-16 md:py-20 lg:py-32">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent px-2">
               Divide Gastos, Comparte Experiencias
             </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground mb-4">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground mb-4 sm:mb-6 px-2">
               La plataforma más fácil para gestionar gastos compartidos con grupos. División automática, presupuestos y más.
             </p>
             {userCount !== null && (
-              <div className="flex items-center justify-center gap-2 mb-8">
-                <Users className="h-5 w-5 text-primary" />
-                <p className="text-lg font-semibold text-muted-foreground">
+              <div className="flex items-center justify-center gap-2 mb-6 sm:mb-8 px-2">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                <p className="text-sm sm:text-base md:text-lg font-semibold text-muted-foreground">
                   <span className="text-primary font-bold">{formatUserCount(userCount)}</span> usuarios confían en nosotros
                 </p>
               </div>
             )}
             {userCount === null && (
-              <div className="flex items-center justify-center gap-2 mb-8">
-                <Users className="h-5 w-5 text-primary" />
-                <p className="text-lg font-semibold text-muted-foreground">
+              <div className="flex items-center justify-center gap-2 mb-6 sm:mb-8 px-2">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                <p className="text-sm sm:text-base md:text-lg font-semibold text-muted-foreground">
                   <span className="text-primary font-bold">5+</span> usuarios confían en nosotros
                 </p>
               </div>
             )}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/register">
-                <Button size="lg" className="text-lg px-8">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-2">
+              <Link href="/register" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto text-base sm:text-lg px-6 sm:px-8">
                   Comenzar Gratis
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
-              <Link href="/login">
-                <Button size="lg" variant="outline" className="text-lg px-8">
+              <Link href="/login" className="w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto text-base sm:text-lg px-6 sm:px-8">
                   Iniciar Sesión
                 </Button>
               </Link>
@@ -203,15 +203,15 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-background">
+      <section className="py-12 sm:py-16 md:py-20 bg-background">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Características Principales</h2>
-            <p className="text-xl text-muted-foreground">
+          <div className="text-center mb-8 sm:mb-12 md:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-4 px-2">Características Principales</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground px-2">
               Todo lo que necesitas para gestionar gastos compartidos de manera eficiente
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
@@ -233,34 +233,34 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-20 bg-muted/50">
+      <section className="py-12 sm:py-16 md:py-20 bg-muted/50">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Planes y Precios</h2>
-            <p className="text-xl text-muted-foreground">
+          <div className="text-center mb-8 sm:mb-12 md:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-4 px-2">Planes y Precios</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground px-2">
               Elige el plan que mejor se adapte a tus necesidades
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
             {plans.map((plan, index) => (
               <Card
                 key={index}
-                className={`relative ${plan.popular ? 'border-primary border-2 shadow-lg scale-105' : ''}`}
+                className={`relative ${plan.popular ? 'border-primary border-2 shadow-lg md:scale-105' : ''}`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
+                  <div className="absolute -top-3 sm:-top-4 left-1/2 transform -translate-x-1/2">
+                    <span className="bg-primary text-primary-foreground px-3 sm:px-4 py-1 rounded-full text-xs sm:text-sm font-semibold">
                       Más Popular
                     </span>
                   </div>
                 )}
                 <CardHeader className="text-center">
-                  <CardTitle className="text-2xl mb-2">{plan.name}</CardTitle>
+                  <CardTitle className="text-xl sm:text-2xl mb-2">{plan.name}</CardTitle>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold">{plan.price}</span>
-                    <span className="text-muted-foreground">/{plan.period}</span>
+                    <span className="text-3xl sm:text-4xl font-bold">{plan.price}</span>
+                    <span className="text-sm sm:text-base text-muted-foreground">/{plan.period}</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">{plan.description}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-2">{plan.description}</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <ul className="space-y-3">
@@ -293,15 +293,15 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 bg-background">
+      <section className="py-12 sm:py-16 md:py-20 bg-background">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Lo que Dicen Nuestros Usuarios</h2>
-            <p className="text-xl text-muted-foreground">
+          <div className="text-center mb-8 sm:mb-12 md:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-4 px-2">Lo que Dicen Nuestros Usuarios</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground px-2">
               {userCount !== null ? `${formatUserCount(userCount)} usuarios` : 'Miles de usuarios'} confían en Splitia para gestionar sus gastos compartidos
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
             {testimonials.map((testimonial, index) => (
               <Card key={index}>
                 <CardContent className="pt-6">
@@ -323,30 +323,30 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-primary text-primary-foreground">
+      <section className="py-12 sm:py-16 md:py-20 bg-primary text-primary-foreground">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold mb-4">¿Listo para Empezar?</h2>
-          <p className="text-xl mb-8 opacity-90">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-2">¿Listo para Empezar?</h2>
+          <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 opacity-90 px-2">
             Únete a {userCount !== null ? formatUserCount(userCount) : 'miles de'} usuarios que ya están simplificando sus gastos compartidos
           </p>
-          <Link href="/register">
-            <Button size="lg" variant="secondary" className="text-lg px-8">
+          <Link href="/register" className="inline-block">
+            <Button size="lg" variant="secondary" className="text-base sm:text-lg px-6 sm:px-8">
               Crear Cuenta Gratis
-              <ArrowRight className="ml-2 h-5 w-5" />
+              <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 border-t bg-muted/50">
+      <footer className="py-8 sm:py-12 border-t bg-muted/50">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-4 md:mb-0">
-              <h3 className="text-2xl font-bold">Splitia</h3>
-              <p className="text-sm text-muted-foreground">Gestiona tus gastos compartidos con facilidad</p>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-center sm:text-left">
+              <h3 className="text-xl sm:text-2xl font-bold">Splitia</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">Gestiona tus gastos compartidos con facilidad</p>
             </div>
-            <div className="flex gap-6">
+            <div className="flex gap-4 sm:gap-6">
               <Link href="/login" className="text-sm hover:underline">
                 Iniciar Sesión
               </Link>
@@ -355,7 +355,7 @@ export default function LandingPage() {
               </Link>
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
+          <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t text-center text-xs sm:text-sm text-muted-foreground">
             <p>© 2025 Splitia. Todos los derechos reservados.</p>
           </div>
         </div>

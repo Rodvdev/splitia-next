@@ -431,6 +431,43 @@ export function GroupKanban({ groupId, onCreateTask }: GroupKanbanProps) {
     }
   };
 
+  const handleCreateBugTask = async () => {
+    try {
+      const request = {
+        title: 'No funciona el boton para dividir igualmente',
+        description: `El botón "Dividir Igualmente" en el formulario de creación de tareas no está funcionando correctamente.
+
+Problema:
+- Al hacer clic en el botón "Dividir Igualmente", no se están creando las participaciones iguales para todos los miembros del grupo
+- El botón parece estar deshabilitado o no responde al hacer clic
+
+Pasos para reproducir:
+1. Ir a crear una nueva tarea
+2. Seleccionar modo de gasto futuro (crear o almacenar)
+3. Ingresar un monto
+4. Hacer clic en "Dividir Igualmente"
+5. Las participaciones no se crean automáticamente
+
+Ubicación:
+- Componente: CreateTaskDialog.tsx
+- Función: calculateEqualShares()
+- Línea aproximada: 126-139`,
+        groupId,
+        priority: 'HIGH' as const,
+      };
+
+      const response = await tasksApi.createTask(request);
+      if (response.success) {
+        toast.success('Tarea de bug creada exitosamente');
+        loadTasks(); // Recargar las tareas para mostrar la nueva
+      } else {
+        toast.error('Error al crear la tarea de bug');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Error al crear la tarea de bug');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -455,6 +492,9 @@ export function GroupKanban({ groupId, onCreateTask }: GroupKanbanProps) {
           <Button onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Nueva Tarea
+          </Button>
+          <Button onClick={handleCreateBugTask} variant="outline" title="Crear tarea de bug: No funciona el botón para dividir igualmente">
+            🐛 Bug: Dividir Igualmente
           </Button>
           {onCreateTask && (
             <Button onClick={onCreateTask} variant="outline">
