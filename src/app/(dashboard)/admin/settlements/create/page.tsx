@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api/admin';
-import { CreateSettlementRequest } from '@/types';
+import { CreateSettlementRequest, UserResponse } from '@/types';
+import AsyncPaginatedSelect from '@/components/common/AsyncPaginatedSelect';
 import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
 
@@ -32,10 +33,14 @@ export default function CreateSettlementPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateSettlementFormData>({
     resolver: zodResolver(createSettlementSchema),
   });
+
+  const selectedUserId = watch('userId');
 
   const onSubmit = async (data: CreateSettlementFormData) => {
     setIsLoading(true);
@@ -110,8 +115,22 @@ export default function CreateSettlementPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="userId">ID de Usuario</Label>
-                <Input id="userId" {...register('userId')} />
+                <Label htmlFor="userId">Usuario</Label>
+                <AsyncPaginatedSelect<UserResponse>
+                  value={selectedUserId}
+                  onChange={(val) => setValue('userId', val)}
+                  placeholder="Seleccionar usuario"
+                  getOptionLabel={(u) => `${u.name} ${u.lastName} (${u.email})`}
+                  getOptionValue={(u) => u.id}
+                  fetchPage={async (page, size) => {
+                    const res = await adminApi.getAllUsers({ page, size });
+                    const data: any = res.data as any;
+                    return {
+                      items: Array.isArray(data?.content) ? (data.content as UserResponse[]) : [],
+                      total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
+                    };
+                  }}
+                />
                 {errors.userId && <p className="text-sm text-destructive">{errors.userId.message}</p>}
               </div>
               <div className="space-y-2">

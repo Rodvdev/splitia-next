@@ -49,12 +49,17 @@ export default function AdminGroupUsersPage() {
     }
   };
 
-  const filteredGroupUsers = groupUsers.filter(
-    (groupUser) =>
-      groupUser.group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      groupUser.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      groupUser.user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredGroupUsers = groupUsers.filter((groupUser) => {
+    const term = (searchTerm || '').toLowerCase();
+    const groupName = (groupUser?.group?.name || '').toLowerCase();
+    const userName = (groupUser?.user?.name || '').toLowerCase();
+    const userEmail = (groupUser?.user?.email || '').toLowerCase();
+    return (
+      groupName.includes(term) ||
+      userName.includes(term) ||
+      userEmail.includes(term)
+    );
+  });
 
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
