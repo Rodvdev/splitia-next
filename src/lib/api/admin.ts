@@ -335,9 +335,16 @@ export const adminApi = {
     return response.data;
   },
   createGroupInvitation: async (
-    data: Partial<GroupInvitationResponse>
+    data: { groupId: string; email?: string }
   ): Promise<ApiResponse<GroupInvitationResponse>> => {
-    const response = await apiClient.instance.post('/admin/group-invitations', data);
+    if (!data.groupId) {
+      throw new Error('Group ID is required');
+    }
+    const response = await apiClient.instance.post('/admin/group-invitations', data, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
     return response.data;
   },
   updateGroupInvitation: async (

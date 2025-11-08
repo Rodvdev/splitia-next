@@ -17,7 +17,7 @@ import Link from 'next/link';
 import { GroupKanban } from '@/components/kanban/GroupKanban';
 import { apiLogger } from '@/lib/utils/api-logger';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
@@ -66,13 +66,20 @@ type UpdateExpenseFormData = z.infer<typeof updateExpenseSchema>;
 export default function GroupDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const groupId = params.id as string;
   const [group, setGroup] = useState<GroupResponse | null>(null);
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(searchParams.get('tab') || 'info');
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteSuccessOpen, setInviteSuccessOpen] = useState(false);
+  const [invitationLink, setInvitationLink] = useState<string | null>(null);
+  const [sendingInvitationEmail, setSendingInvitationEmail] = useState(false);
+  const [invitationEmailSent, setInvitationEmailSent] = useState(false);
+  const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null);
   const [addUserId, setAddUserId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditingGroup, setIsEditingGroup] = useState(false);
@@ -506,9 +513,9 @@ export default function GroupDetailPage() {
   };
 
   const handleInvite = async () => {
-    // Only system admins can send invitations
-    if (!isSystemAdmin) {
-      toast.error('Solo los administradores del sistema pueden enviar invitaciones grupales.');
+    // Check if user can manage members (system admin or group admin)
+    if (!canManageMembers && !isSystemAdmin) {
+      toast.error('Solo los administradores del grupo o del sistema pueden enviar invitaciones.');
       return;
     }
 
@@ -519,13 +526,27 @@ export default function GroupDetailPage() {
     setIsSubmitting(true);
     const payload = { email: inviteEmail.trim() };
     try {
-      // Only use admin endpoint - requires system admin role
       const adminRes = await adminApi.createGroupInvitation({ groupId, ...payload } as any);
-      apiLogger.groups({ endpoint: 'admin.createGroupInvitation', success: adminRes.success, params: { groupId, ...payload }, data: adminRes.data, error: adminRes.success ? null : adminRes });
+
+      apiLogger.groups({ 
+        endpoint: 'admin.createGroupInvitation', 
+        success: adminRes.success, 
+        params: { groupId, ...payload }, 
+        data: adminRes.data, 
+        error: adminRes.success ? null : adminRes 
+      });
+      
       if (adminRes.success) {
-        toast.success('Invitación enviada exitosamente');
-        setInviteOpen(false);
-        setInviteEmail('');
+        // Build an invitation link if token is returned
+        const token = adminRes.data?.token;
+        const base = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+        const link = token ? `${base}/accept-invitation?token=${token}` : null;
+  setInvitationLink(link);
+  setInviteSuccessOpen(true);
+  setInviteOpen(false);
+  setLastInvitedEmail(inviteEmail.trim());
+  setInviteEmail('');
+        toast.success('Invitación creada exitosamente');
       } else {
         toast.error(adminRes.message || 'No se pudo crear la invitación');
       }
@@ -533,7 +554,7 @@ export default function GroupDetailPage() {
       const status = error?.response?.status;
       apiLogger.groups({ endpoint: 'admin.createGroupInvitation', success: false, params: { groupId, ...payload }, error });
       if (status === 403) {
-        toast.error('No tienes permisos para enviar invitaciones. Solo los administradores del sistema pueden enviar invitaciones.');
+        toast.error('No tienes permisos para enviar invitaciones. Debes ser administrador del grupo.');
       } else if (status === 401) {
         toast.error('Sesión expirada. Inicia sesión nuevamente.');
       } else if (status === 404) {
@@ -545,6 +566,37 @@ export default function GroupDetailPage() {
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const sendInvitationEmail = async (toEmail: string, link?: string | null) => {
+    if (!toEmail) return;
+    setSendingInvitationEmail(true);
+    try {
+      const subject = `Invitación a unirte al grupo ${group?.name || ''}`;
+      const html = `
+        <p>Has sido invitado a unirte al grupo <strong>${group?.name || ''}</strong> en Splitia.</p>
+        ${link ? `<p>Únete haciendo clic aquí: <a href="${link}">${link}</a></p>` : ''}
+        <p>Si no esperabas este correo, ignóralo.</p>
+      `;
+
+      const res = await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'custom', to: toEmail, subject, html }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setInvitationEmailSent(true);
+        toast.success('Correo de invitación enviado');
+      } else {
+        toast.error(json.error || 'No se pudo enviar el correo de invitación');
+      }
+    } catch (err) {
+      console.error('Error sending invitation email:', err);
+      toast.error('Error enviando correo de invitación');
+    } finally {
+      setSendingInvitationEmail(false);
     }
   };
 
@@ -610,6 +662,10 @@ export default function GroupDetailPage() {
         </div>
         {canEditGroup && (
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setInviteOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Invitar
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setIsEditingGroup(true)}>
               <Edit className="h-4 w-4 mr-2" />
               Editar
@@ -622,7 +678,19 @@ export default function GroupDetailPage() {
         )}
       </div>
 
-      <Tabs defaultValue="info" className="w-full">
+      <Tabs 
+        defaultValue={activeTab} 
+        className="w-full" 
+        onValueChange={(value) => {
+          setActiveTab(value);
+          const newParams = new URLSearchParams(window.location.search);
+          newParams.set('tab', value);
+          router.push(`${window.location.pathname}?${newParams.toString()}`);
+          if (value === 'members' && (canManageMembers || isSystemAdmin)) {
+            setInviteOpen(true);
+          }
+        }}
+      >
         <TabsList>
           <TabsTrigger value="info">
             <Info className="h-4 w-4 mr-2" />
@@ -764,115 +832,198 @@ export default function GroupDetailPage() {
         <TabsContent value="members" className="mt-6">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Miembros del Grupo</CardTitle>
-                {isSystemAdmin && (
-                  <Button size="sm" onClick={() => setInviteOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Invitar miembro
-                  </Button>
-                )}
-              </div>
+              <CardTitle>Miembros del Grupo</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {group.members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium">
-                        {member.user.name} {member.user.lastName}
+              <div className="space-y-4">
+                {(canManageMembers || isSystemAdmin) && (
+                  <div className="border border-green-200 bg-green-50 rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium mb-1">Invita a nuevos miembros</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Invita a nuevos miembros al grupo mediante correo electrónico o enlace de invitación
                       </p>
-                      <p className="text-sm text-muted-foreground">{member.user.email}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {editingMember === member.id ? (
-                        <Select
-                          defaultValue={member.role}
-                          onValueChange={(value) => {
-                            handleUpdateMemberRole(member.id, value as 'ADMIN' | 'MEMBER' | 'GUEST' | 'ASSISTANT');
-                          }}
-                        >
-                          <SelectTrigger className="w-[120px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ADMIN">Admin</SelectItem>
-                            <SelectItem value="MEMBER">Miembro</SelectItem>
-                            <SelectItem value="GUEST">Invitado</SelectItem>
-                            <SelectItem value="ASSISTANT">Asistente</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge variant="outline" className="capitalize">{member.role}</Badge>
-                      )}
-                      {canManageMembers && (
-                        <div className="flex gap-1">
-                          {editingMember !== member.id && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingMember(member.id)}
+                    <Button size="sm" onClick={() => setInviteOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Invitar miembro
+                    </Button>
+                  </div>
+                )}
+                {group.members.length === 0 ? (
+                  <div className="text-center py-8 border rounded-lg">
+                    <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground">No hay miembros en este grupo</p>
+                    {canManageMembers && (
+                      <Button variant="link" onClick={() => setInviteOpen(true)} className="mt-2">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Invitar miembros
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {group.members.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">
+                            {member.user.name} {member.user.lastName}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{member.user.email}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {editingMember === member.id ? (
+                            <Select
+                              defaultValue={member.role}
+                              onValueChange={(value) => {
+                                handleUpdateMemberRole(member.id, value as 'ADMIN' | 'MEMBER' | 'GUEST' | 'ASSISTANT');
+                              }}
                             >
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                              <SelectTrigger className="w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ADMIN">Admin</SelectItem>
+                                <SelectItem value="MEMBER">Miembro</SelectItem>
+                                <SelectItem value="GUEST">Invitado</SelectItem>
+                                <SelectItem value="ASSISTANT">Asistente</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge variant="outline" className="capitalize">{member.role}</Badge>
                           )}
-                          {member.user.id !== user?.id && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setDeleteMemberId(member.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                          {canManageMembers && (
+                            <div className="flex gap-1">
+                              {editingMember !== member.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setEditingMember(member.id)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {member.user.id !== user?.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setDeleteMemberId(member.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             </CardContent>
-          </Card>
-
-          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+          </Card>          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Invitar o agregar miembro</DialogTitle>
+                <DialogTitle>Invitar miembro</DialogTitle>
+                <DialogDescription>
+                  Invita a nuevos miembros al grupo mediante correo electrónico
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="invite-email">Invitar por correo</Label>
-                  <Input
-                    id="invite-email"
-                    type="email"
-                    placeholder="correo@ejemplo.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">Se enviará una invitación al correo indicado</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="add-user">Agregar usuario existente por ID</Label>
-                  <Input
-                    id="add-user"
-                    placeholder="ID del usuario (UUID)"
-                    value={addUserId}
-                    onChange={(e) => setAddUserId(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">Requiere conocer el ID del usuario registrado</p>
-                </div>
+                <Tabs defaultValue="email" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="email">Por correo</TabsTrigger>
+                    <TabsTrigger value="link">Por enlace</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="email">
+                    <div className="space-y-2">
+                      <Label htmlFor="invite-email">Correo electrónico</Label>
+                      <Input
+                        id="invite-email"
+                        type="email"
+                        placeholder="correo@ejemplo.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Se enviará una invitación al correo indicado.
+                      </p>
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="link">
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Genera un enlace de invitación para compartir directamente.
+                      </p>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
               <DialogFooter className="flex gap-2">
                 <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancelar</Button>
-                <Button onClick={handleAddMember} disabled={isSubmitting || !canManageMembers} variant="secondary">
-                  {isSubmitting ? 'Agregando...' : 'Agregar por ID'}
-                </Button>
-                <Button onClick={handleInvite} disabled={isSubmitting || !isSystemAdmin}>
-                  {isSubmitting ? 'Enviando...' : 'Enviar invitación'}
+                <Button onClick={async () => {
+                  if (inviteEmail) {
+                    handleInvite();
+                  } else {
+                    // Solo generar el link sin enviar correo
+                    setIsSubmitting(true);
+                    try {
+                      const adminRes = await adminApi.createGroupInvitation({ groupId } as any);
+                      if (adminRes.success && adminRes.data?.token) {
+                        const base = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+                        const link = `${base}/accept-invitation?token=${adminRes.data.token}`;
+                        setInvitationLink(link);
+                        setInviteSuccessOpen(true);
+                        setInviteOpen(false);
+                        toast.success('Enlace de invitación generado');
+                      } else {
+                        toast.error(adminRes.message || 'No se pudo generar el enlace');
+                      }
+                    } catch (error) {
+                      toast.error('Error al generar el enlace de invitación');
+                      console.error(error);
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }
+                }} disabled={isSubmitting}>
+                  {isSubmitting ? 'Generando...' : (inviteEmail ? 'Enviar por correo' : 'Generar enlace')}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
+            {/* Dialog que muestra el link de invitación y permite enviarlo por correo */}
+            <Dialog open={inviteSuccessOpen} onOpenChange={setInviteSuccessOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Invitación creada</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Invitación generada exitosamente.</p>
+                  {invitationLink ? (
+                    <div className="break-all bg-gray-50 p-3 rounded">
+                      <code>{invitationLink}</code>
+                    </div>
+                  ) : (
+                    <p className="text-sm">No se generó un enlace. Puedes enviar la invitación por correo igualmente.</p>
+                  )}
+                </div>
+                <DialogFooter className="flex gap-2">
+                  <Button variant="outline" onClick={() => {
+                    if (invitationLink) {
+                      navigator.clipboard.writeText(invitationLink);
+                      toast.success('Enlace copiado al portapapeles');
+                    } else {
+                      toast('No hay enlace para copiar');
+                    }
+                  }}>Copiar enlace</Button>
+                  <Button onClick={() => sendInvitationEmail(lastInvitedEmail || inviteEmail, invitationLink)} disabled={sendingInvitationEmail || !(lastInvitedEmail || inviteEmail)}>
+                    {sendingInvitationEmail ? 'Enviando...' : (invitationEmailSent ? 'Enviado' : 'Enviar correo')}
+                  </Button>
+                  <Button variant="secondary" onClick={() => setInviteSuccessOpen(false)}>Cerrar</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
         </TabsContent>
       </Tabs>
 
