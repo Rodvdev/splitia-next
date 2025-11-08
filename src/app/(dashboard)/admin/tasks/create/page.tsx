@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
 import { apiLogger } from '@/lib/utils/api-logger';
 import { extractDataFromResponse } from '@/lib/utils/api-response';
+import AsyncPaginatedSelect from '@/components/common/AsyncPaginatedSelect';
 
 const createTaskSchema = z.object({
   title: z.string().min(1, 'El título es requerido'),
@@ -277,18 +278,21 @@ export default function CreateTaskPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="groupId">Grupo *</Label>
-                <select
-                  id="groupId"
-                  {...register('groupId')}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Seleccionar grupo</option>
-                  {groups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))}
-                </select>
+                <AsyncPaginatedSelect<GroupResponse>
+                  value={selectedGroupIdForm}
+                  onChange={(val) => setValue('groupId', val)}
+                  placeholder="Seleccionar grupo"
+                  getOptionLabel={(g) => g.name}
+                  getOptionValue={(g) => g.id}
+                  fetchPage={async (page, size) => {
+                    const res = await adminApi.getAllGroups({ page, size });
+                    const data: any = res.data as any;
+                    return {
+                      items: Array.isArray(data?.content) ? (data.content as GroupResponse[]) : [],
+                      total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
+                    };
+                  }}
+                />
                 {errors.groupId && <p className="text-sm text-destructive">{errors.groupId.message}</p>}
               </div>
               <div className="space-y-2">
@@ -386,21 +390,25 @@ export default function CreateTaskPage() {
                 {expenseMode === 'reference' && (
                   <div className="space-y-2">
                     <Label htmlFor="expenseId">Seleccionar Expense *</Label>
-                    <select
-                      id="expenseId"
-                      {...register('expenseId')}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">Seleccionar expense</option>
-                      {expenses.map((expense) => (
-                        <option key={expense.id} value={expense.id}>
-                          {expense.description} - {formatCurrency(expense.amount, expense.currency)} ({formatDate(expense.date, 'PP', 'es')})
-                        </option>
-                      ))}
-                    </select>
+                    <AsyncPaginatedSelect<ExpenseResponse>
+                      value={watch('expenseId')}
+                      onChange={(val) => setValue('expenseId', val)}
+                      placeholder="Seleccionar expense"
+                      getOptionLabel={(e) => `${e.description} - ${formatCurrency(e.amount, e.currency)} (${formatDate(e.date, 'PP', 'es')})`}
+                      getOptionValue={(e) => e.id}
+                      fetchPage={async (page, size) => {
+                        const res = await expensesApi.getAll({ groupId: selectedGroupId || selectedGroupIdForm || '', page, size });
+                        const data: any = res.data as any;
+                        return {
+                          items: Array.isArray(data?.content) ? (data.content as ExpenseResponse[]) : [],
+                          total: typeof data?.totalElements === 'number' ? data.totalElements : 0,
+                        };
+                      }}
+                      disabled={!selectedGroupIdForm}
+                    />
                     {errors.expenseId && <p className="text-sm text-destructive">{errors.expenseId.message}</p>}
-                    {expenses.length === 0 && selectedGroupId && (
-                      <p className="text-sm text-muted-foreground">No hay expenses disponibles en este grupo</p>
+                    {!selectedGroupIdForm && (
+                      <p className="text-xs text-muted-foreground">Selecciona un grupo primero</p>
                     )}
                   </div>
                 )}

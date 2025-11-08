@@ -49,14 +49,15 @@ export default function AdminConversationsPage() {
     }
   };
 
-  const filteredConversations = conversations.filter(
-    (conversation) =>
-      conversation.members.some(
-        (p) =>
-          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.email.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-  );
+  const filteredConversations = conversations.filter((conversation) => {
+    const members = Array.isArray(conversation.members) ? conversation.members : [];
+    const term = (searchTerm || '').toLowerCase();
+    return members.some((p) => {
+      const name = (p?.name || '').toLowerCase();
+      const email = (p?.email || '').toLowerCase();
+      return name.includes(term) || email.includes(term);
+    });
+  });
 
   if (loading) {
     return (

@@ -26,6 +26,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Gastos', href: '/dashboard/expenses', icon: Receipt },
   { name: 'Grupos', href: '/dashboard/groups', icon: Users },
+  { name: 'Invitaciones', href: '/dashboard/invitations', icon: UserPlus },
   { name: 'Presupuesto', href: '/dashboard/budgets', icon: Wallet },
   { name: 'Kanban', href: '/dashboard/kanban', icon: CheckSquare },
   { name: 'Chat', href: '/dashboard/chat', icon: MessageSquare },

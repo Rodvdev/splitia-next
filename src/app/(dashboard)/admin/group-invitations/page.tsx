@@ -49,13 +49,19 @@ export default function AdminGroupInvitationsPage() {
     }
   };
 
-  const filteredInvitations = invitations.filter(
-    (invitation) =>
-      invitation.group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invitation.invitedBy.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invitation.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invitation.invitedUser?.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredInvitations = invitations.filter((invitation) => {
+    const term = (searchTerm || '').toLowerCase();
+    const groupName = (invitation?.group?.name || '').toLowerCase();
+    const invitedByName = (invitation?.invitedBy?.name || '').toLowerCase();
+    const invitedEmail = (invitation?.email || '').toLowerCase();
+    const invitedUserName = (invitation?.invitedUser?.name || '').toLowerCase();
+    return (
+      groupName.includes(term) ||
+      invitedByName.includes(term) ||
+      invitedEmail.includes(term) ||
+      invitedUserName.includes(term)
+    );
+  });
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
