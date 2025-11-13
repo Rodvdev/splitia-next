@@ -14,6 +14,7 @@ import { User, Mail, Phone, Calendar, Edit, Lock, UserPlus } from 'lucide-react'
 import { groupInvitationsApi } from '@/lib/api/group-invitations';
 import { extractDataFromResponse } from '@/lib/utils/api-response';
 import { apiLogger } from '@/lib/utils/api-logger';
+import { useTheme } from 'next-themes';
 
 export default function ProfilePage() {
   const [user, setUser] = useState<UserResponse | null>(null);
@@ -27,6 +28,9 @@ export default function ProfilePage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
   const [dateFormat, setDateFormat] = useState<string>('DD/MM/YYYY');
   const [timeFormat, setTimeFormat] = useState<'24H' | '12H'>('24H');
+  const [currency, setCurrency] = useState<string>('USD');
+  const [language, setLanguage] = useState<string>('es');
+  const { theme: currentTheme, setTheme: applyTheme } = useTheme();
 
   useEffect(() => {
     loadUser();
@@ -40,20 +44,14 @@ export default function ProfilePage() {
       const response = await usersApi.getMe();
       if (response.success) {
         setUser(response.data);
-        setTheme((response.data.theme as 'light' | 'dark') || 'light');
+        setTheme(((currentTheme as 'light' | 'dark') || (response.data.theme as 'light' | 'dark') || 'light'));
         setNotificationsEnabled(
           typeof response.data.notificationsEnabled === 'boolean' ? response.data.notificationsEnabled : true
         );
         setDateFormat(response.data.dateFormat || 'DD/MM/YYYY');
         setTimeFormat((response.data.timeFormat as '24H' | '12H') || '24H');
-        if (typeof window !== 'undefined') {
-          const root = document.documentElement;
-          if ((response.data.theme as 'light' | 'dark') === 'dark') {
-            root.classList.add('dark');
-          } else {
-            root.classList.remove('dark');
-          }
-        }
+        setCurrency(response.data.currency || 'USD');
+        setLanguage(response.data.language || 'es');
       }
     } catch (err) {
       const errorMessage = err instanceof Error 
@@ -74,7 +72,6 @@ export default function ProfilePage() {
       setInvitations(extractDataFromResponse(res));
     } catch (err: any) {
       apiLogger.groups({ endpoint: 'group-invitations.listMine', success: false, params: {}, error: err });
-      // Don't show error toast for invitations, just log it
       console.error('Error loading invitations:', err);
     } finally {
       setLoadingInvitations(false);
@@ -165,15 +162,13 @@ export default function ProfilePage() {
         notificationsEnabled,
         dateFormat,
         timeFormat,
+        currency,
+        language,
       };
       const res = await usersApi.updatePreferences(req);
       if (res.success) {
         setUser(res.data);
-        if (typeof window !== 'undefined') {
-          const root = document.documentElement;
-          if (theme === 'dark') root.classList.add('dark');
-          else root.classList.remove('dark');
-        }
+        applyTheme(theme);
         toast.success('Preferencias actualizadas');
       }
     } catch (err: any) {
@@ -336,19 +331,38 @@ export default function ProfilePage() {
                 <option value="12H">12H</option>
               </select>
             </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Moneda</p>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="MXN">MXN</option>
+                <option value="ARS">ARS</option>
+                <option value="CLP">CLP</option>
+                <option value="COP">COP</option>
+                <option value="PEN">PEN</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Idioma</p>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="es">Español</option>
+                <option value="en">English</option>
+                <option value="pt">Português</option>
+              </select>
+            </div>
             <Button onClick={savePreferences} disabled={savingPrefs} className="w-full">
               {savingPrefs ? 'Guardando...' : 'Guardar Preferencias'}
             </Button>
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Moneda</p>
-                <p className="text-sm font-medium">{user.currency || 'USD'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Idioma</p>
-                <p className="text-sm font-medium">{user.language || 'Español'}</p>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
@@ -361,7 +375,7 @@ export default function ProfilePage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Link href="/dashboard/profile/edit">
+          <Link href="/dashboard/profile/change-password">
             <Button variant="outline">
               Cambiar Contraseña
             </Button>

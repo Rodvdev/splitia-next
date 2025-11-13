@@ -41,10 +41,9 @@ const navigation = [
   { name: 'Presupuesto', href: '/dashboard/budgets', icon: Wallet },
   { name: 'Kanban', href: '/dashboard/kanban', icon: CheckSquare },
   { name: 'Chat', href: '/dashboard/chat', icon: MessageSquare },
-  { name: 'Perfil', href: '/dashboard/profile', icon: User },
   { name: 'Suscripción', href: '/dashboard/subscriptions', icon: CreditCard },
   { name: 'Soporte', href: '/dashboard/support', icon: HelpCircle },
-  { name: 'Configuración', href: '/dashboard/settings', icon: Settings },
+  { name: 'Perfil', href: '/dashboard/profile', icon: User },
 ];
 
 const adminNavigation = [

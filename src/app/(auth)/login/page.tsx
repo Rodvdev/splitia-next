@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -26,10 +27,12 @@ export default function LoginPage() {
   const router = useRouter();
   const { setUser, setToken: setStoreToken } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
 
   const {
     register,
     handleSubmit,
+    reset,
     setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
@@ -93,11 +96,17 @@ export default function LoginPage() {
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al iniciar sesión';
-      console.error('❌ Error en inicio de sesión:', error);
-      toast.error(errorMessage);
+      const status = (error as any)?.response?.status;
+      if (status === 401) {
+        setErrorDialogOpen(true);
+        reset({ email: '', password: '' });
+      } else {
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al iniciar sesión';
+        console.error('❌ Error en inicio de sesión:', error);
+        toast.error(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -181,6 +190,19 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
+      <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Credenciales incorrectas</DialogTitle>
+            <DialogDescription>
+              Inténtalo de nuevo. Hemos reiniciado los campos para que ingreses tu email y contraseña nuevamente.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setErrorDialogOpen(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
