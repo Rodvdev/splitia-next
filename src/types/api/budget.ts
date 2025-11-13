@@ -1,4 +1,5 @@
 import { CategoryResponse } from './category';
+import { GroupResponse } from './group';
 
 export interface BudgetResponse {
   id: string;
@@ -7,6 +8,8 @@ export interface BudgetResponse {
   year: number;
   currency: string;
   category?: CategoryResponse;
+  group?: GroupResponse;
+  groupId?: string;
   createdAt: string;
 }
 
@@ -16,6 +19,7 @@ export interface CreateBudgetRequest {
   year: number;
   currency?: string;
   categoryId?: string;
+  groupId?: string;
 }
 
 export interface UpdateBudgetRequest {

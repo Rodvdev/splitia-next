@@ -3,12 +3,16 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
 import { budgetsApi } from '@/lib/api/budgets';
+import { groupsApi } from '@/lib/api/groups';
 import { BudgetResponse } from '@/types';
 import { toast } from 'sonner';
-import { Plus, Wallet, Calendar, Trash2 } from 'lucide-react';
+import { Plus, Wallet, Calendar, Trash2, Edit } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { apiLogger } from '@/lib/utils/api-logger';
@@ -24,6 +28,16 @@ export default function BudgetsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<BudgetResponse | null>(null);
+  const [editAmount, setEditAmount] = useState<string>('');
+  const [editCurrency, setEditCurrency] = useState<string>('USD');
+  const [editMonth, setEditMonth] = useState<string>('');
+  const [editYear, setEditYear] = useState<string>('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [groupsMap, setGroupsMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadBudgets();
@@ -33,7 +47,10 @@ export default function BudgetsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await budgetsApi.getAll();
+      const [response, groupsRes] = await Promise.all([
+        budgetsApi.getAll(),
+        groupsApi.getAll({ page: 0, size: 100 }),
+      ]);
       apiLogger.budgets({
         endpoint: 'getAll',
         success: response.success,
@@ -42,6 +59,10 @@ export default function BudgetsPage() {
         error: response.success ? null : response,
       });
       setBudgets(extractDataFromResponse(response));
+      const groupsData = extractDataFromResponse(groupsRes);
+      const map: Record<string, string> = {};
+      groupsData.forEach((g: any) => { if (g?.id) map[g.id] = g.name; });
+      setGroupsMap(map);
     } catch (err) {
       apiLogger.budgets({
         endpoint: 'getAll',
@@ -59,11 +80,14 @@ export default function BudgetsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este presupuesto?')) {
-      return;
-    }
+  const handleDelete = (id: string) => {
+    setPendingDeleteId(id);
+    setConfirmOpen(true);
+  };
 
+  const performDelete = async () => {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
     try {
       setDeletingId(id);
       const response = await budgetsApi.delete(id);
@@ -76,6 +100,8 @@ export default function BudgetsPage() {
       });
       if (response.success) {
         toast.success('Presupuesto eliminado correctamente');
+        setConfirmOpen(false);
+        setPendingDeleteId(null);
         loadBudgets();
       }
     } catch (err) {
@@ -91,6 +117,94 @@ export default function BudgetsPage() {
       toast.error(errorMessage);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const CURRENCIES = [
+    { value: 'USD', label: 'USD - Dólar Estadounidense' },
+    { value: 'EUR', label: 'EUR - Euro' },
+    { value: 'MXN', label: 'MXN - Peso Mexicano' },
+    { value: 'GBP', label: 'GBP - Libra Esterlina' },
+    { value: 'JPY', label: 'JPY - Yen Japonés' },
+    { value: 'CAD', label: 'CAD - Dólar Canadiense' },
+    { value: 'AUD', label: 'AUD - Dólar Australiano' },
+    { value: 'CHF', label: 'CHF - Franco Suizo' },
+    { value: 'CNY', label: 'CNY - Yuan Chino' },
+    { value: 'BRL', label: 'BRL - Real Brasileño' },
+  ];
+
+  const openEdit = (budget: BudgetResponse) => {
+    setEditingBudget(budget);
+    setEditAmount(String(budget.amount));
+    setEditCurrency(budget.currency || 'USD');
+    setEditMonth(String(budget.month));
+    setEditYear(String(budget.year));
+    setEditOpen(true);
+  };
+
+  const saveEdit = async () => {
+    if (!editingBudget) return;
+    try {
+      setSavingEdit(true);
+      const monthChanged = Number(editMonth) !== editingBudget.month;
+      const yearChanged = Number(editYear) !== editingBudget.year;
+
+      if (monthChanged || yearChanged) {
+        const createRes = await budgetsApi.create({
+          amount: Number(editAmount),
+          month: Number(editMonth),
+          year: Number(editYear),
+          currency: editCurrency,
+          categoryId: editingBudget.category?.id,
+        });
+        apiLogger.budgets({
+          endpoint: 'create',
+          success: createRes.success,
+          params: { amount: Number(editAmount), month: Number(editMonth), year: Number(editYear) },
+          data: createRes.data,
+          error: createRes.success ? null : createRes,
+        });
+        if (createRes.success) {
+          const delRes = await budgetsApi.delete(editingBudget.id);
+          apiLogger.budgets({
+            endpoint: 'delete',
+            success: delRes.success,
+            params: { id: editingBudget.id },
+            data: delRes.data,
+            error: delRes.success ? null : delRes,
+          });
+          toast.success('Presupuesto actualizado');
+          setEditOpen(false);
+          setEditingBudget(null);
+          loadBudgets();
+        } else {
+          toast.error('No se pudo actualizar el presupuesto');
+        }
+      } else {
+        const response = await budgetsApi.update(editingBudget.id, {
+          amount: Number(editAmount),
+          currency: editCurrency,
+        });
+        apiLogger.budgets({
+          endpoint: 'update',
+          success: response.success,
+          params: { id: editingBudget.id },
+          data: response.data,
+          error: response.success ? null : response,
+        });
+        if (response.success) {
+          toast.success('Presupuesto actualizado');
+          setEditOpen(false);
+          setEditingBudget(null);
+          loadBudgets();
+        } else {
+          toast.error('No se pudo actualizar el presupuesto');
+        }
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Error al actualizar');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -155,7 +269,7 @@ export default function BudgetsPage() {
                   <div className="flex items-center gap-2">
                     <Wallet className="h-5 w-5 text-primary" />
                     <CardTitle className="text-lg">
-                      {budget.category?.name || 'General'}
+                      {groupsMap[budget.groupId || ''] || budget.group?.name || budget.category?.name || 'General'}
                     </CardTitle>
                   </div>
                   <Badge variant="outline">
@@ -179,6 +293,15 @@ export default function BudgetsPage() {
                     variant="outline"
                     size="sm"
                     className="flex-1"
+                    onClick={() => openEdit(budget)}
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
                     onClick={() => handleDelete(budget.id)}
                     disabled={deletingId === budget.id}
                   >
@@ -197,6 +320,85 @@ export default function BudgetsPage() {
           ))}
         </div>
       )}
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar presupuesto</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que quieres eliminar este presupuesto?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={performDelete} disabled={!pendingDeleteId || deletingId === pendingDeleteId}>
+              {deletingId === pendingDeleteId ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar presupuesto</DialogTitle>
+            <DialogDescription>
+              Actualiza el monto y la moneda del presupuesto.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label htmlFor="edit-amount" className="text-sm">Monto</label>
+              <Input
+                id="edit-amount"
+                type="number"
+                step="0.01"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor="edit-month" className="text-sm">Mes</label>
+                <Input
+                  id="edit-month"
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={editMonth}
+                  onChange={(e) => setEditMonth(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-year" className="text-sm">Año</label>
+                <Input
+                  id="edit-year"
+                  type="number"
+                  value={editYear}
+                  onChange={(e) => setEditYear(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm">Moneda</label>
+              <Select value={editCurrency} onValueChange={setEditCurrency}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar moneda" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+            <Button onClick={saveEdit} disabled={savingEdit}>{savingEdit ? 'Guardando...' : 'Guardar'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

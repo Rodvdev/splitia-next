@@ -109,7 +109,7 @@ export function MessageList({
         )}
         {messages.map((message, index) => (
           <MessageBubble
-            key={message.id}
+            key={`${message.id}-${index}`}
             message={message}
             showSenderName={shouldShowSenderName(index)}
           />

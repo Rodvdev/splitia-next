@@ -113,11 +113,15 @@ export const chatApi = {
       }
       const group = groupResponse.data;
 
-      // 2. Opción 1: Si el grupo tiene conversationId, obtener la conversación directamente (más eficiente)
+      // 2. Opción 1: Si el grupo tiene conversationId, intentar obtener la conversación directamente
       if (group.conversationId) {
-        const conversationResponse = await chatApi.getConversationById(group.conversationId);
-        if (conversationResponse.success && conversationResponse.data) {
-          return conversationResponse;
+        try {
+          const conversationResponse = await chatApi.getConversationById(group.conversationId);
+          if (conversationResponse.success && conversationResponse.data) {
+            return conversationResponse;
+          }
+        } catch (err) {
+          // Si la conversación no existe (404) o falla, continuar con la búsqueda/creación
         }
       }
 

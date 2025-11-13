@@ -2,8 +2,8 @@ import { apiClient } from './client';
 import { ApiResponse, Page, Pageable, CategoryResponse, CreateCategoryRequest, UpdateCategoryRequest } from '@/types';
 
 export const categoriesApi = {
-  getAll: async (pageable?: Pageable): Promise<ApiResponse<Page<CategoryResponse>>> => {
-    const response = await apiClient.instance.get('/categories', { params: pageable });
+  getAll: async (params?: Pageable & { groupId?: string }): Promise<ApiResponse<Page<CategoryResponse>>> => {
+    const response = await apiClient.instance.get('/categories', { params });
     return response.data;
   },
 

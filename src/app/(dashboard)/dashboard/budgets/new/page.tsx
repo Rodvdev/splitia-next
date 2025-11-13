@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { groupsApi } from '@/lib/api/groups';
-import { categoriesApi } from '@/lib/api/categories';
-import { GroupResponse, CategoryResponse } from '@/types';
+import { GroupResponse, CreateBudgetRequest } from '@/types';
+import { budgetsApi } from '@/lib/api/budgets';
+import { toast } from 'sonner';
 import { extractDataFromResponse } from '@/lib/utils/api-response';
+import { useAuthRestore } from '@/hooks/useAuthRestore';
 
 const CURRENCIES = [
   { value: 'USD', label: 'USD - Dólar Estadounidense' },
@@ -28,9 +30,14 @@ const CURRENCIES = [
 ];
 
 export default function NewBudgetPage() {
-  const { register, handleSubmit, watch, setValue, control } = useForm();
+  const { register, handleSubmit, watch, setValue, control } = useForm<{ amount: number; currency?: string; month: number; year: number; groupId?: string }>({
+    defaultValues: {
+      currency: 'USD',
+    },
+  });
   const [groups, setGroups] = useState<GroupResponse[]>([]);
-  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+  const [saving, setSaving] = useState(false);
+  const { isRestoring, user } = useAuthRestore();
 
   useEffect(() => {
     loadData();
@@ -38,23 +45,45 @@ export default function NewBudgetPage() {
 
   const loadData = async () => {
     try {
-      const [groupsRes, categoriesRes] = await Promise.all([
+      const [groupsRes] = await Promise.all([
         groupsApi.getAll({ page: 0, size: 100 }),
-        categoriesApi.getAll({ page: 0, size: 100 }),
       ]);
-      if (groupsRes.success) {
-        setGroups(extractDataFromResponse(groupsRes));
-      }
-      if (categoriesRes.success) {
-        setCategories(extractDataFromResponse(categoriesRes));
-      }
+      const groupsData = (groupsRes as any)?.data !== undefined
+        ? extractDataFromResponse(groupsRes as any)
+        : (Array.isArray(groupsRes) ? (groupsRes as any) : []);
+      setGroups(groupsData);
     } catch (error) {
       console.error('Error loading data:', error);
     }
   };
 
   const selectedGroupId = watch('groupId');
-  const selectedCategoryId = watch('categoryId');
+
+  // Category selection removed
+
+  // Removed categoryId
+
+  const onSubmit = async (data: any) => {
+    try {
+      setSaving(true);
+      const payload: CreateBudgetRequest = {
+        amount: Number(data.amount || 0),
+        month: Number(data.month),
+        year: Number(data.year),
+        currency: data.currency || 'USD',
+        groupId: data.groupId || undefined,
+      };
+      const res = await budgetsApi.create(payload);
+      if (res.success) {
+        toast.success('Presupuesto creado correctamente');
+        window.location.href = '/dashboard/budgets';
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'No se pudo crear el presupuesto');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -75,11 +104,11 @@ export default function NewBudgetPage() {
           <CardTitle>Información del Presupuesto</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="amount">Monto</Label>
-                <Input id="amount" type="number" step="0.01" placeholder="0.00" {...register('amount')} />
+                <Input id="amount" type="number" step="0.01" placeholder="0.00" {...register('amount', { valueAsNumber: true })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="currency">Moneda</Label>
@@ -106,26 +135,29 @@ export default function NewBudgetPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="month">Mes</Label>
-                <Input id="month" type="number" min="1" max="12" placeholder="1-12" {...register('month')} />
+                <Input id="month" type="number" min="1" max="12" placeholder="1-12" {...register('month', { valueAsNumber: true })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="year">Año</Label>
-                <Input id="year" type="number" placeholder="2024" {...register('year')} />
+                <Input id="year" type="number" placeholder="2024" {...register('year', { valueAsNumber: true })} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="groupId">Grupo (opcional)</Label>
                 <Controller
                   name="groupId"
                   control={control}
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}
+                      value={field.value ?? ''}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar grupo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Ninguno</SelectItem>
+                        <SelectItem value="__none__">Ninguno</SelectItem>
                         {groups.map((group) => (
                           <SelectItem key={group.id} value={group.id}>
                             {group.name}
@@ -136,31 +168,9 @@ export default function NewBudgetPage() {
                   )}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="categoryId">Categoría (opcional)</Label>
-                <Controller
-                  name="categoryId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar categoría" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Ninguna</SelectItem>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
             </div>
             <div className="flex gap-2">
-              <Button type="submit">Crear Presupuesto</Button>
+              <Button type="submit" disabled={saving}>{saving ? 'Creando...' : 'Crear Presupuesto'}</Button>
               <Link href="/dashboard/budgets">
                 <Button type="button" variant="outline">Cancelar</Button>
               </Link>

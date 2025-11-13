@@ -1,11 +1,16 @@
 'use client';
 
 import { useForm, Controller } from 'react-hook-form';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { expensesApi } from '@/lib/api/expenses';
+import { toast } from 'sonner';
+import { useAuthStore } from '@/store/authStore';
+import { CreateExpenseRequest } from '@/types';
 
 const CURRENCIES = [
   { value: 'USD', label: 'USD - Dólar Estadounidense' },
@@ -21,7 +26,47 @@ const CURRENCIES = [
 ];
 
 export default function NewExpensePage() {
+  const router = useRouter();
+  const { user } = useAuthStore();
   const { register, handleSubmit, control } = useForm();
+
+  const onSubmit = async (data: any) => {
+    try {
+      const amountNum = typeof data.amount === 'string' ? parseFloat(data.amount) : Number(data.amount);
+      const paidById = user?.id;
+      if (!paidById) {
+        toast.error('No hay usuario autenticado');
+        return;
+      }
+
+      const request: CreateExpenseRequest = {
+        amount: amountNum || 0,
+        description: data.description || '',
+        date: new Date().toISOString(),
+        currency: data.currency || 'USD',
+        location: data.location || undefined,
+        notes: data.notes || undefined,
+        paidById,
+        shares: [
+          {
+            userId: paidById,
+            amount: amountNum || 0,
+            type: 'FIXED',
+          },
+        ],
+      };
+
+      const response = await expensesApi.create(request);
+      if (response.success) {
+        toast.success('Gasto creado exitosamente');
+        router.push('/dashboard/expenses');
+      } else {
+        toast.error('Error al crear el gasto');
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Error al crear el gasto');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -35,7 +80,7 @@ export default function NewExpensePage() {
           <CardTitle>Información del Gasto</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-2">
               <Label htmlFor="description">Descripción</Label>
               <Input id="description" placeholder="Ej: Cena en restaurante" {...register('description')} />
@@ -65,6 +110,16 @@ export default function NewExpensePage() {
                     </Select>
                   )}
                 />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="location">Ubicación</Label>
+                <Input id="location" placeholder="Opcional" {...register('location')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notas</Label>
+                <Input id="notes" placeholder="Opcional" {...register('notes')} />
               </div>
             </div>
             <div className="flex gap-2">

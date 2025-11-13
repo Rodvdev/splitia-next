@@ -229,12 +229,14 @@ export function ChatMessageArea({ conversation, groupName }: ChatMessageAreaProp
       });
 
       if (response.success && response.data) {
-        // Reemplazar mensaje optimista con el real
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === optimisticMessage.id ? response.data : m
-          )
-        );
+        // Reemplazar mensaje optimista con el real, evitando duplicados si ya llegó por WebSocket
+        setMessages((prev) => {
+          const alreadyExists = prev.some((m) => m.id === response.data.id);
+          if (alreadyExists) {
+            return prev.filter((m) => m.id !== optimisticMessage.id);
+          }
+          return prev.map((m) => (m.id === optimisticMessage.id ? response.data : m));
+        });
 
         // Scroll al final
         setTimeout(() => {
