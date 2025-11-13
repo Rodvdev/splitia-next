@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { usersApi } from '@/lib/api/users';
-import { UserResponse, GroupInvitationResponse } from '@/types';
+import { UserResponse, GroupInvitationResponse, UpdatePreferencesRequest } from '@/types';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -14,6 +14,7 @@ import { User, Mail, Phone, Calendar, Edit, Lock, UserPlus } from 'lucide-react'
 import { groupInvitationsApi } from '@/lib/api/group-invitations';
 import { extractDataFromResponse } from '@/lib/utils/api-response';
 import { apiLogger } from '@/lib/utils/api-logger';
+import { useTheme } from 'next-themes';
 
 export default function ProfilePage() {
   const [user, setUser] = useState<UserResponse | null>(null);
@@ -22,6 +23,14 @@ export default function ProfilePage() {
   const [invitations, setInvitations] = useState<GroupInvitationResponse[]>([]);
   const [loadingInvitations, setLoadingInvitations] = useState(false);
   const [manualToken, setManualToken] = useState<string>('');
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
+  const [dateFormat, setDateFormat] = useState<string>('DD/MM/YYYY');
+  const [timeFormat, setTimeFormat] = useState<'24H' | '12H'>('24H');
+  const [currency, setCurrency] = useState<string>('USD');
+  const [language, setLanguage] = useState<string>('es');
+  const { theme: currentTheme, setTheme: applyTheme } = useTheme();
 
   useEffect(() => {
     loadUser();
@@ -35,6 +44,14 @@ export default function ProfilePage() {
       const response = await usersApi.getMe();
       if (response.success) {
         setUser(response.data);
+        setTheme(((currentTheme as 'light' | 'dark') || (response.data.theme as 'light' | 'dark') || 'light'));
+        setNotificationsEnabled(
+          typeof response.data.notificationsEnabled === 'boolean' ? response.data.notificationsEnabled : true
+        );
+        setDateFormat(response.data.dateFormat || 'DD/MM/YYYY');
+        setTimeFormat((response.data.timeFormat as '24H' | '12H') || '24H');
+        setCurrency(response.data.currency || 'USD');
+        setLanguage(response.data.language || 'es');
       }
     } catch (err) {
       const errorMessage = err instanceof Error 
@@ -55,7 +72,6 @@ export default function ProfilePage() {
       setInvitations(extractDataFromResponse(res));
     } catch (err: any) {
       apiLogger.groups({ endpoint: 'group-invitations.listMine', success: false, params: {}, error: err });
-      // Don't show error toast for invitations, just log it
       console.error('Error loading invitations:', err);
     } finally {
       setLoadingInvitations(false);
@@ -138,6 +154,30 @@ export default function ProfilePage() {
     setManualToken('');
   };
 
+  const savePreferences = async () => {
+    try {
+      setSavingPrefs(true);
+      const req: UpdatePreferencesRequest = {
+        theme,
+        notificationsEnabled,
+        dateFormat,
+        timeFormat,
+        currency,
+        language,
+      };
+      const res = await usersApi.updatePreferences(req);
+      if (res.success) {
+        setUser(res.data);
+        applyTheme(theme);
+        toast.success('Preferencias actualizadas');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Error al actualizar preferencias');
+    } finally {
+      setSavingPrefs(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -191,6 +231,13 @@ export default function ProfilePage() {
             <div className="flex items-start gap-3">
               <User className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div className="flex-1">
+                <p className="text-sm text-muted-foreground">ID de Usuario</p>
+                <p className="text-base font-medium font-mono break-all">{user.id}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div className="flex-1">
                 <p className="text-sm text-muted-foreground">Nombre Completo</p>
                 <p className="text-base font-medium">
                   {user.name} {user.lastName}
@@ -233,20 +280,89 @@ export default function ProfilePage() {
             <CardTitle>Preferencias</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Tema</p>
+              <select
+                value={theme}
+                onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="light">Blanco</option>
+                <option value="dark">Negro</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Notificaciones</p>
+                <p className="text-xs text-muted-foreground">Activar o desactivar notificaciones</p>
+              </div>
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notificationsEnabled}
+                  onChange={(e) => setNotificationsEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="peer h-6 w-11 rounded-full bg-input peer-checked:bg-primary relative transition-colors">
+                  <div className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-background shadow transition-transform peer-checked:translate-x-5" />
+                </div>
+              </label>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Formato de Fecha</p>
+              <select
+                value={dateFormat}
+                onChange={(e) => setDateFormat(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Formato de Hora</p>
+              <select
+                value={timeFormat}
+                onChange={(e) => setTimeFormat(e.target.value as '24H' | '12H')}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="24H">24H</option>
+                <option value="12H">12H</option>
+              </select>
+            </div>
+            <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Moneda</p>
-              <p className="text-base font-medium">{user.currency || 'USD'}</p>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="MXN">MXN</option>
+                <option value="ARS">ARS</option>
+                <option value="CLP">CLP</option>
+                <option value="COP">COP</option>
+                <option value="PEN">PEN</option>
+              </select>
             </div>
-            <div>
+            <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Idioma</p>
-              <p className="text-base font-medium">{user.language || 'Español'}</p>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="es">Español</option>
+                <option value="en">English</option>
+                <option value="pt">Português</option>
+              </select>
             </div>
-            <Link href="/dashboard/settings">
-              <Button variant="outline" className="w-full">
-                <Edit className="h-4 w-4 mr-2" />
-                Editar Preferencias
-              </Button>
-            </Link>
+            <Button onClick={savePreferences} disabled={savingPrefs} className="w-full">
+              {savingPrefs ? 'Guardando...' : 'Guardar Preferencias'}
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -259,7 +375,7 @@ export default function ProfilePage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Link href="/dashboard/profile/edit">
+          <Link href="/dashboard/profile/change-password">
             <Button variant="outline">
               Cambiar Contraseña
             </Button>

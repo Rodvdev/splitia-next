@@ -43,78 +43,36 @@ export function useAuthRestore() {
             setUser(response.data);
             setToken(token);
           } else {
-            // Token inválido, intentar refresh
-            const refreshToken = getRefreshToken();
-            if (refreshToken) {
-              try {
-                const refreshResponse = await authApi.refresh(refreshToken);
-                if (refreshResponse.success) {
-                  const { token: newToken } = refreshResponse.data;
-                  setToken(newToken);
-                  const meResponse = await authApi.me();
-                  if (meResponse.success && meResponse.data) {
-                    setUser(meResponse.data);
-                  }
-                } else {
-                  useAuthStore.getState().logout();
-                }
-              } catch (refreshError) {
-                console.error('Error refreshing token:', refreshError);
-                useAuthStore.getState().logout();
-              }
-            } else {
-              useAuthStore.getState().logout();
-            }
+            // Token inválido: no intentamos refresh manualmente aquí.
+            // El axios interceptor maneja el refresh automáticamente en caso de 401.
+            // Limpiamos la sesión para evitar estados inconsistentes.
+            useAuthStore.getState().logout();
           }
         } catch (error) {
-          // Error al validar token (puede estar expirado)
-          // Intentar refresh si hay refreshToken
-          const refreshToken = getRefreshToken();
-          if (refreshToken) {
-            try {
-              const refreshResponse = await authApi.refresh(refreshToken);
-              if (refreshResponse.success) {
-                // Token refrescado exitosamente
-                const { token: newToken } = refreshResponse.data;
-                setToken(newToken);
-                // Obtener usuario actualizado
-                const meResponse = await authApi.me();
-                if (meResponse.success && meResponse.data) {
-                  setUser(meResponse.data);
-                }
-              } else {
-                // Refresh falló, limpiar sesión
-                useAuthStore.getState().logout();
-              }
-            } catch (refreshError) {
-              // Refresh falló, limpiar sesión
-              console.error('Error refreshing token:', refreshError);
-              useAuthStore.getState().logout();
-            }
-          } else {
-            // No hay refresh token, pero mantener sesión si hay token
-            // El interceptor manejará el refresh cuando sea necesario
-            console.log('No refresh token available, but token exists');
-          }
+          // Error al validar token (posiblemente expirado).
+          // Evitamos el refresh manual y delegamos al interceptor.
+          console.warn('Token inválido, no se pudo restaurar sesión automáticamente:', error);
+          useAuthStore.getState().logout();
         }
       } else {
-        // No hay token, verificar si hay refreshToken
+        // No hay token. Si hay refreshToken, intentamos obtener el usuario;
+        // el interceptor intentará refrescar automáticamente en el primer 401.
         const refreshToken = getRefreshToken();
         if (refreshToken) {
           try {
-            const refreshResponse = await authApi.refresh(refreshToken);
-            if (refreshResponse.success) {
-              const { token: newToken } = refreshResponse.data;
-              setToken(newToken);
-              const meResponse = await authApi.me();
-              if (meResponse.success && meResponse.data) {
-                setUser(meResponse.data);
+            const meResponse = await authApi.me();
+            if (meResponse.success && meResponse.data) {
+              setUser(meResponse.data);
+              // Actualizamos el token del store desde localStorage si el interceptor lo refrescó.
+              const newToken = getToken();
+              if (newToken) {
+                setToken(newToken);
               }
             } else {
               useAuthStore.getState().logout();
             }
-          } catch (refreshError) {
-            console.error('Error refreshing token:', refreshError);
+          } catch (error) {
+            console.warn('No se pudo restaurar la sesión con refresh token:', error);
             useAuthStore.getState().logout();
           }
         }

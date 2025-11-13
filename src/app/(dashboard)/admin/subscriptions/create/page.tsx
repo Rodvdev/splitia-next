@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
 
 const createSubscriptionSchema = z.object({
-  planType: z.enum(['FREE', 'PREMIUM', 'ENTERPRISE'], {
+  planType: z.enum(['FREE', 'PRO', 'ENTERPRISE'], {
     required_error: 'El tipo de plan es requerido',
   }),
   paymentMethod: z.string().min(1, 'El método de pago es requerido'),
@@ -99,14 +99,14 @@ export default function CreateSubscriptionPage() {
               <Label htmlFor="planType">Tipo de Plan</Label>
               <Select
                 value={selectedPlanType}
-                onValueChange={(val) => setValue('planType', val as 'FREE' | 'PREMIUM' | 'ENTERPRISE')}
+                onValueChange={(val) => setValue('planType', val as 'FREE' | 'PRO' | 'ENTERPRISE')}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar tipo de plan" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="FREE">Free</SelectItem>
-                  <SelectItem value="PREMIUM">Premium</SelectItem>
+                  <SelectItem value="PRO">Pro</SelectItem>
                   <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
                 </SelectContent>
               </Select>
