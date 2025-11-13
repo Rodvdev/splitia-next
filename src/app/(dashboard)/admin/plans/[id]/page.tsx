@@ -108,7 +108,11 @@ export default function PlanDetailPage() {
               <p className="text-lg font-semibold">
                 {plan.pricePerMonth === 0
                   ? 'Gratis'
-                  : `${plan.currency} ${plan.pricePerMonth.toFixed(2)}/mes`}
+                  : plan.pricePerMonth != null
+                    ? `${plan.currency ?? ''} ${plan.pricePerMonth.toFixed(2)}/mes`
+                    : plan.currency
+                      ? `${plan.currency} —/mes`
+                      : '—/mes'}
               </p>
             </div>
             <div>

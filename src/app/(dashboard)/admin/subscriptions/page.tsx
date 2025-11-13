@@ -136,7 +136,8 @@ export default function AdminSubscriptionsPage() {
   const getPlanLabel = (plan: string) => {
     const labels: Record<string, string> = {
       FREE: 'Gratis',
-      PREMIUM: 'Premium',
+      PRO: 'Pro',
+      PREMIUM: 'Pro', // compatibilidad con valores antiguos
       ENTERPRISE: 'Enterprise',
     };
     return labels[plan] || plan;

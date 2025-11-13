@@ -16,7 +16,8 @@ import { apiLogger } from '@/lib/utils/api-logger';
 
 const PLAN_LABELS: Record<string, string> = {
   FREE: 'Gratuito',
-  PREMIUM: 'Premium',
+  PRO: 'Pro',
+  PREMIUM: 'Pro', // compatibilidad con valores antiguos
   ENTERPRISE: 'Enterprise',
 };
 
@@ -118,10 +119,12 @@ export default function SubscriptionsPage() {
           title="No tienes una suscripción activa"
           description="Suscríbete a un plan para obtener acceso a todas las funciones"
           action={
-            <Button>
-              <CreditCard className="h-4 w-4 mr-2" />
-              Ver Planes Disponibles
-            </Button>
+            <Link href="/dashboard/subscriptions/settings">
+              <Button>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Ver Planes Disponibles
+              </Button>
+            </Link>
           }
         />
       </div>
@@ -181,7 +184,13 @@ export default function SubscriptionsPage() {
             <div>
               <p className="text-sm text-muted-foreground">Precio Mensual</p>
               <p className="text-base font-medium">
-                {subscription.currency} {subscription.pricePerMonth.toFixed(2)}
+                {subscription.pricePerMonth === 0 || subscription.planType === 'FREE'
+                  ? 'Gratis'
+                  : subscription.pricePerMonth != null
+                    ? `${subscription.currency ?? ''} ${subscription.pricePerMonth.toFixed(2)}`
+                    : subscription.currency
+                      ? `${subscription.currency} —`
+                      : '—'}
               </p>
             </div>
 

@@ -2,7 +2,7 @@ import { UserResponse } from './user';
 
 export interface SubscriptionResponse {
   id: string;
-  planType: 'FREE' | 'PREMIUM' | 'ENTERPRISE';
+  planType: 'FREE' | 'PRO' | 'ENTERPRISE';
   status: 'ACTIVE' | 'INACTIVE' | 'CANCELLED' | 'EXPIRED' | 'PAST_DUE';
   startDate: string;
   endDate?: string;
@@ -17,12 +17,12 @@ export interface SubscriptionResponse {
 }
 
 export interface CreateSubscriptionRequest {
-  planType: 'FREE' | 'PREMIUM' | 'ENTERPRISE';
+  planType: 'FREE' | 'PRO' | 'ENTERPRISE';
   paymentMethod: string;
 }
 
 export interface UpdateSubscriptionRequest {
-  planType?: 'FREE' | 'PREMIUM' | 'ENTERPRISE';
+  planType?: 'FREE' | 'PRO' | 'ENTERPRISE';
   status?: 'ACTIVE' | 'INACTIVE' | 'CANCELLED' | 'EXPIRED' | 'PAST_DUE';
   autoRenew?: boolean;
 }

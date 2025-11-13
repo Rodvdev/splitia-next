@@ -7,6 +7,10 @@ export interface UserResponse {
   image?: string;
   currency: string;
   language: string;
+  theme?: 'light' | 'dark';
+  notificationsEnabled?: boolean;
+  dateFormat?: string;
+  timeFormat?: '24H' | '12H';
   role?: string;
   createdAt: string;
 }
@@ -26,6 +30,10 @@ export interface ChangePasswordRequest {
 export interface UpdatePreferencesRequest {
   currency?: string;
   language?: string;
+  theme?: 'light' | 'dark';
+  notificationsEnabled?: boolean;
+  dateFormat?: string;
+  timeFormat?: '24H' | '12H';
 }
 
 // Admin types

@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import { apiLogger } from '@/lib/utils/api-logger';
 
 const updateSubscriptionSchema = z.object({
-  planType: z.enum(['FREE', 'PREMIUM', 'ENTERPRISE']).optional(),
+  planType: z.enum(['FREE', 'PRO', 'ENTERPRISE']).optional(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'CANCELLED', 'EXPIRED', 'PAST_DUE']).optional(),
   autoRenew: z.boolean().optional(),
 });
@@ -161,7 +161,8 @@ export default function SubscriptionDetailPage() {
   const getPlanLabel = (plan: string) => {
     const labels: Record<string, string> = {
       FREE: 'Gratis',
-      PREMIUM: 'Premium',
+      PRO: 'Pro',
+      PREMIUM: 'Pro', // compatibilidad con valores antiguos
       ENTERPRISE: 'Enterprise',
     };
     return labels[plan] || plan;
@@ -331,7 +332,7 @@ export default function SubscriptionDetailPage() {
                 <Label htmlFor="planType">Plan</Label>
                 <select id="planType" {...register('planType')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                   <option value="FREE">Gratis</option>
-                  <option value="PREMIUM">Premium</option>
+                  <option value="PRO">Pro</option>
                   <option value="ENTERPRISE">Enterprise</option>
                 </select>
               </div>

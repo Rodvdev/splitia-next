@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { usersApi } from '@/lib/api/users';
-import { UserResponse, GroupInvitationResponse } from '@/types';
+import { UserResponse, GroupInvitationResponse, UpdatePreferencesRequest } from '@/types';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -22,6 +22,11 @@ export default function ProfilePage() {
   const [invitations, setInvitations] = useState<GroupInvitationResponse[]>([]);
   const [loadingInvitations, setLoadingInvitations] = useState(false);
   const [manualToken, setManualToken] = useState<string>('');
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
+  const [dateFormat, setDateFormat] = useState<string>('DD/MM/YYYY');
+  const [timeFormat, setTimeFormat] = useState<'24H' | '12H'>('24H');
 
   useEffect(() => {
     loadUser();
@@ -35,6 +40,20 @@ export default function ProfilePage() {
       const response = await usersApi.getMe();
       if (response.success) {
         setUser(response.data);
+        setTheme((response.data.theme as 'light' | 'dark') || 'light');
+        setNotificationsEnabled(
+          typeof response.data.notificationsEnabled === 'boolean' ? response.data.notificationsEnabled : true
+        );
+        setDateFormat(response.data.dateFormat || 'DD/MM/YYYY');
+        setTimeFormat((response.data.timeFormat as '24H' | '12H') || '24H');
+        if (typeof window !== 'undefined') {
+          const root = document.documentElement;
+          if ((response.data.theme as 'light' | 'dark') === 'dark') {
+            root.classList.add('dark');
+          } else {
+            root.classList.remove('dark');
+          }
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error 
@@ -138,6 +157,32 @@ export default function ProfilePage() {
     setManualToken('');
   };
 
+  const savePreferences = async () => {
+    try {
+      setSavingPrefs(true);
+      const req: UpdatePreferencesRequest = {
+        theme,
+        notificationsEnabled,
+        dateFormat,
+        timeFormat,
+      };
+      const res = await usersApi.updatePreferences(req);
+      if (res.success) {
+        setUser(res.data);
+        if (typeof window !== 'undefined') {
+          const root = document.documentElement;
+          if (theme === 'dark') root.classList.add('dark');
+          else root.classList.remove('dark');
+        }
+        toast.success('Preferencias actualizadas');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Error al actualizar preferencias');
+    } finally {
+      setSavingPrefs(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -191,6 +236,13 @@ export default function ProfilePage() {
             <div className="flex items-start gap-3">
               <User className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div className="flex-1">
+                <p className="text-sm text-muted-foreground">ID de Usuario</p>
+                <p className="text-base font-medium font-mono break-all">{user.id}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div className="flex-1">
                 <p className="text-sm text-muted-foreground">Nombre Completo</p>
                 <p className="text-base font-medium">
                   {user.name} {user.lastName}
@@ -233,20 +285,70 @@ export default function ProfilePage() {
             <CardTitle>Preferencias</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Moneda</p>
-              <p className="text-base font-medium">{user.currency || 'USD'}</p>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Tema</p>
+              <select
+                value={theme}
+                onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="light">Blanco</option>
+                <option value="dark">Negro</option>
+              </select>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Idioma</p>
-              <p className="text-base font-medium">{user.language || 'Español'}</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Notificaciones</p>
+                <p className="text-xs text-muted-foreground">Activar o desactivar notificaciones</p>
+              </div>
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notificationsEnabled}
+                  onChange={(e) => setNotificationsEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="peer h-6 w-11 rounded-full bg-input peer-checked:bg-primary relative transition-colors">
+                  <div className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-background shadow transition-transform peer-checked:translate-x-5" />
+                </div>
+              </label>
             </div>
-            <Link href="/dashboard/settings">
-              <Button variant="outline" className="w-full">
-                <Edit className="h-4 w-4 mr-2" />
-                Editar Preferencias
-              </Button>
-            </Link>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Formato de Fecha</p>
+              <select
+                value={dateFormat}
+                onChange={(e) => setDateFormat(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Formato de Hora</p>
+              <select
+                value={timeFormat}
+                onChange={(e) => setTimeFormat(e.target.value as '24H' | '12H')}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="24H">24H</option>
+                <option value="12H">12H</option>
+              </select>
+            </div>
+            <Button onClick={savePreferences} disabled={savingPrefs} className="w-full">
+              {savingPrefs ? 'Guardando...' : 'Guardar Preferencias'}
+            </Button>
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div>
+                <p className="text-xs text-muted-foreground">Moneda</p>
+                <p className="text-sm font-medium">{user.currency || 'USD'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Idioma</p>
+                <p className="text-sm font-medium">{user.language || 'Español'}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -128,7 +128,11 @@ export default function AdminPlansPage() {
                             <p className="font-medium">
                               {plan.pricePerMonth === 0
                                 ? 'Gratis'
-                                : `${plan.currency} ${plan.pricePerMonth.toFixed(2)}/mes`}
+                                : plan.pricePerMonth != null
+                                  ? `${plan.currency ?? ''} ${plan.pricePerMonth.toFixed(2)}/mes`
+                                  : plan.currency
+                                    ? `${plan.currency} —/mes`
+                                    : '—/mes'}
                             </p>
                           </div>
                         </td>
