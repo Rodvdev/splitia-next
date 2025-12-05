@@ -24,7 +24,7 @@ export const hrApi = {
     apiLogger.general({
       endpoint: 'GET /admin/hr/employees',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/hr/employees', {
       params: pageable,
@@ -110,7 +110,7 @@ export const hrApi = {
     apiLogger.general({
       endpoint: 'GET /admin/hr/attendance',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/hr/attendance', {
       params: pageable,
@@ -210,7 +210,7 @@ export const hrApi = {
     apiLogger.general({
       endpoint: 'GET /admin/hr/payroll',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/hr/payroll', {
       params: pageable,

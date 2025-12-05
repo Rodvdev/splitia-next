@@ -17,7 +17,7 @@ export const marketingApi = {
   // Campaigns
   getAllCampaigns: async (pageable?: Pageable): Promise<ApiResponse<Page<CampaignResponse>>> => {
     const response = await apiClient.instance.get('/admin/marketing/campaigns', { params: pageable });
-    apiLogger.general({ endpoint: 'getAllCampaigns', success: response.data.success, params: pageable, data: response.data });
+    apiLogger.general({ endpoint: 'getAllCampaigns', success: response.data.success, params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined, data: response.data });
     return response.data;
   },
 
@@ -48,7 +48,7 @@ export const marketingApi = {
   // Workflows
   getAllWorkflows: async (pageable?: Pageable): Promise<ApiResponse<Page<MarketingWorkflowResponse>>> => {
     const response = await apiClient.instance.get('/admin/marketing/workflows', { params: pageable });
-    apiLogger.general({ endpoint: 'getAllWorkflows', success: response.data.success, params: pageable, data: response.data });
+    apiLogger.general({ endpoint: 'getAllWorkflows', success: response.data.success, params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined, data: response.data });
     return response.data;
   },
 
@@ -79,7 +79,7 @@ export const marketingApi = {
   // Landing Pages
   getAllLandingPages: async (pageable?: Pageable): Promise<ApiResponse<Page<LandingPageResponse>>> => {
     const response = await apiClient.instance.get('/admin/marketing/landing-pages', { params: pageable });
-    apiLogger.general({ endpoint: 'getAllLandingPages', success: response.data.success, params: pageable, data: response.data });
+    apiLogger.general({ endpoint: 'getAllLandingPages', success: response.data.success, params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined, data: response.data });
     return response.data;
   },
 

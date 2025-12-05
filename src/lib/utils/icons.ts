@@ -488,8 +488,14 @@ export function findIconByValue(value: string | LucideIcon, type: IconType): Ico
         return icon.value === value;
       } else {
         // For lucide icons, compare by name since components can't be compared directly
-        return typeof icon.value !== 'string' && typeof value !== 'string' && 
-               (icon.value as any).displayName === (value as any).displayName;
+        return (
+          typeof icon.value !== 'string' &&
+          typeof value !== 'string' &&
+          'displayName' in (icon.value as object) &&
+          'displayName' in (value as object) &&
+          (icon.value as { displayName?: string }).displayName ===
+            (value as { displayName?: string }).displayName
+        );
       }
     });
     if (found) return found;

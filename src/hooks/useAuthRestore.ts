@@ -17,7 +17,7 @@ export function useAuthRestore() {
   useEffect(() => {
     // Solo restaurar una vez
     if (hasRestored.current) {
-      setIsRestoring(false);
+      setTimeout(() => setIsRestoring(false), 0);
       return;
     }
 
@@ -25,7 +25,7 @@ export function useAuthRestore() {
       // Si ya se inicializó, solo marcar como restaurado
       if (isInitialized) {
         hasRestored.current = true;
-        setIsRestoring(false);
+        setTimeout(() => setIsRestoring(false), 0);
         return;
       }
 
@@ -79,7 +79,7 @@ export function useAuthRestore() {
       }
 
       hasRestored.current = true;
-      setIsRestoring(false);
+      setTimeout(() => setIsRestoring(false), 0);
     };
 
     restoreSession();

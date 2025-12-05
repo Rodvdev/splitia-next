@@ -30,7 +30,7 @@ export interface ReportConfig {
 export interface ReportFilter {
   field: string;
   operator: 'EQUALS' | 'NOT_EQUALS' | 'GREATER_THAN' | 'LESS_THAN' | 'CONTAINS' | 'IN' | 'BETWEEN';
-  value: any;
+  value: unknown;
 }
 
 export interface ReportAggregation {
@@ -62,7 +62,7 @@ export interface DashboardResponse {
 export interface DashboardWidget {
   id: string;
   type: 'CHART' | 'TABLE' | 'METRIC' | 'KPI';
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   position: { x: number; y: number; w: number; h: number };
 }
 

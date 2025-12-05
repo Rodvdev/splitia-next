@@ -39,14 +39,30 @@ export default function MarketingCampaignsPage() {
   useEffect(() => {
     if (!connected) return;
 
+    const isCampaignResponse = (x: unknown): x is CampaignResponse => {
+      if (!x || typeof x !== 'object') return false;
+      const o = x as Partial<CampaignResponse>;
+      return (
+        typeof (o as { id?: string }).id === 'string' &&
+        typeof (o as { name?: string }).name === 'string' &&
+        typeof (o as { type?: string }).type === 'string' &&
+        typeof (o as { status?: string }).status === 'string'
+      );
+    };
+
     const unsubscribe = subscribe('/topic/marketing/campaigns', (message) => {
       const { type, data } = message;
       
       if (type === 'CAMPAIGN_CREATED' || type === 'CAMPAIGN_UPDATED') {
-        const campaign = data as CampaignResponse;
-        refetch();
-        if (type === 'CAMPAIGN_CREATED') {
-          toast.success(`Nueva campaña: ${campaign.name}`);
+        const payload = data as unknown;
+        const candidate = (payload && typeof payload === 'object' && 'campaign' in (payload as Record<string, unknown>))
+          ? (payload as { campaign?: unknown }).campaign
+          : payload;
+        if (isCampaignResponse(candidate)) {
+          refetch();
+          if (type === 'CAMPAIGN_CREATED') {
+            toast.success(`Nueva campaña: ${candidate.name}`);
+          }
         }
       } else if (type === 'CAMPAIGN_DELETED') {
         refetch();

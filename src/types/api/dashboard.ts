@@ -21,14 +21,14 @@ export interface DashboardWidgetConfig {
   id: string;
   type: 'KPI' | 'CHART' | 'TABLE' | 'METRIC';
   title: string;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   position: { x: number; y: number; w: number; h: number };
 }
 
 export interface DashboardFilter {
   field: string;
   operator: 'EQUALS' | 'NOT_EQUALS' | 'GREATER_THAN' | 'LESS_THAN' | 'BETWEEN' | 'IN';
-  value: any;
+  value: unknown;
 }
 
 export interface DashboardConfig {

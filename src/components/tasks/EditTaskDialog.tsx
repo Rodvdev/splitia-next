@@ -191,8 +191,11 @@ export function EditTaskDialog({ open, onOpenChange, task, groupId, onSuccess }:
         onOpenChange(false);
         onSuccess?.(response.data);
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al actualizar la tarea');
+    } catch (error: unknown) {
+      const message = (error && typeof error === 'object' && 'response' in error)
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      toast.error(message || 'Error al actualizar la tarea');
     } finally {
       setIsLoading(false);
     }

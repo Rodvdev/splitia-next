@@ -12,7 +12,7 @@ export interface WorkflowResponse {
   status: WorkflowStatus;
   nodes: WorkflowNode[];
   connections: WorkflowConnection[];
-  variables?: Record<string, any>;
+  variables?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
   lastRunAt?: string;
@@ -24,8 +24,8 @@ export interface WorkflowNode {
   type: NodeType;
   label: string;
   position: { x: number; y: number };
-  config: Record<string, any>;
-  data?: Record<string, any>;
+  config: Record<string, unknown>;
+  data?: Record<string, unknown>;
 }
 
 export interface WorkflowConnection {
@@ -41,7 +41,7 @@ export interface CreateWorkflowRequest {
   description?: string;
   nodes: WorkflowNode[];
   connections: WorkflowConnection[];
-  variables?: Record<string, any>;
+  variables?: Record<string, unknown>;
 }
 
 export interface WorkflowExecutionResponse {
@@ -60,7 +60,7 @@ export interface WorkflowLog {
   level: 'INFO' | 'WARNING' | 'ERROR';
   message: string;
   nodeId?: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }
 
 export interface WorkflowTemplateResponse {

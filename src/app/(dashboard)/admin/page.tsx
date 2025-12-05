@@ -50,6 +50,18 @@ export default function AdminDashboardPage() {
     const unsubscribeNotifications = subscribe(WS_CHANNELS.NOTIFICATIONS, (message) => {
       const { type, action, data } = message;
       
+      const isSupportTicketResponse = (x: unknown): x is SupportTicketResponse => {
+        if (!x || typeof x !== 'object') return false;
+        const o = x as Partial<SupportTicketResponse>;
+        return (
+          typeof (o as { id?: string }).id === 'string' &&
+          typeof (o as { status?: string }).status === 'string'
+        );
+      };
+
+      const isTicketStatus = (s: unknown): s is SupportTicketResponse['status'] =>
+        typeof s === 'string' && ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'PENDING_CUSTOMER'].includes(s);
+
       if (type === 'USER_CREATED' || action === 'CREATED') {
         setTotalUsers((prev) => prev + 1);
         toast.success('Nuevo usuario registrado');
@@ -59,18 +71,25 @@ export default function AdminDashboardPage() {
         // Recargar datos de suscripciones para actualizar MRR
         loadDashboardData();
       } else if (type === 'TICKET_CREATED' || action === 'CREATED') {
-        const ticket = data.ticket || data;
-        if (ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS') {
-          setOpenTickets((prev) => prev + 1);
+        const payload = data as unknown;
+        const candidate = (payload && typeof payload === 'object' && 'ticket' in (payload as Record<string, unknown>))
+          ? (payload as { ticket?: unknown }).ticket
+          : payload;
+        if (isSupportTicketResponse(candidate)) {
+          if (candidate.status === 'OPEN' || candidate.status === 'IN_PROGRESS') {
+            setOpenTickets((prev) => prev + 1);
+          }
         }
       } else if (type === 'TICKET_STATUS_CHANGED' || action === 'STATUS_CHANGED') {
-        const { oldStatus, newStatus } = data;
-        if ((oldStatus === 'OPEN' || oldStatus === 'IN_PROGRESS') && 
-            (newStatus === 'RESOLVED' || newStatus === 'CLOSED')) {
-          setOpenTickets((prev) => Math.max(0, prev - 1));
-        } else if ((oldStatus === 'RESOLVED' || oldStatus === 'CLOSED') && 
-                   (newStatus === 'OPEN' || newStatus === 'IN_PROGRESS')) {
-          setOpenTickets((prev) => prev + 1);
+        const statusData = data && typeof data === 'object' ? (data as { oldStatus?: unknown; newStatus?: unknown }) : {};
+        const oldStatus = statusData.oldStatus;
+        const newStatus = statusData.newStatus;
+        if (isTicketStatus(oldStatus) && isTicketStatus(newStatus)) {
+          if ((oldStatus === 'OPEN' || oldStatus === 'IN_PROGRESS') && (newStatus === 'RESOLVED' || newStatus === 'CLOSED')) {
+            setOpenTickets((prev) => Math.max(0, prev - 1));
+          } else if ((oldStatus === 'RESOLVED' || oldStatus === 'CLOSED') && (newStatus === 'OPEN' || newStatus === 'IN_PROGRESS')) {
+            setOpenTickets((prev) => prev + 1);
+          }
         }
       }
     });

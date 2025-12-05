@@ -24,7 +24,7 @@ export const projectsApi = {
     apiLogger.general({
       endpoint: 'GET /admin/projects',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/projects', {
       params: pageable,
@@ -129,7 +129,7 @@ export const projectsApi = {
     apiLogger.general({
       endpoint: `GET /admin/projects/${projectId}/time-entries`,
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get(`/admin/projects/${projectId}/time-entries`, {
       params: pageable,
@@ -153,7 +153,7 @@ export const projectsApi = {
     apiLogger.general({
       endpoint: 'GET /admin/projects/time-entries',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/projects/time-entries', {
       params: pageable,

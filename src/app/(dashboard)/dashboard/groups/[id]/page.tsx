@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { groupsApi } from '@/lib/api/groups';
 import { expensesApi } from '@/lib/api/expenses';
 import { GroupResponse, ExpenseResponse, CreateExpenseRequest, UpdateExpenseRequest, ExpenseShareRequest, UpdateGroupRequest, UpdateGroupMemberRequest } from '@/types';
+ 
+import { sumShares as sumMonetary, sumFixed, remainder, hasDuplicates } from '@/lib/calc';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { ArrowLeft, Users, Receipt, CheckSquare, Info, Edit, Trash2, Plus, Save, X } from 'lucide-react';
@@ -125,15 +127,53 @@ export default function GroupDetailPage() {
     resolver: zodResolver(updateExpenseSchema),
   });
 
-  const { fields: shareFields, append: appendShare, remove: removeShare } = useFieldArray({
+  const { fields: shareFields, append: appendShare, remove: removeShare, replace: replaceShares } = useFieldArray({
     control: controlExpense,
     name: 'shares',
   });
 
   const futureExpenseAmount = watchExpense('amount');
+  const sharesWatch = watchExpense('shares');
   const groupMembers = group?.members.map(m => m.user) || [];
+  const isEditingAmountRef = useRef(false);
+  const equalersUpdateTimer = useRef<number | null>(null);
+
+  const fixedSum = useMemo(() => {
+    const fixed = (sharesWatch || []).filter((s: ExpenseShareRequest) => s.type === 'FIXED');
+    return Number(fixed.reduce((a: number, b: ExpenseShareRequest) => a + (b.amount || 0), 0).toFixed(2));
+  }, [sharesWatch]);
+
+  const remainderAmount = useMemo(() => {
+    const total = Number(futureExpenseAmount || 0);
+    const rem = total - fixedSum;
+    return Number(rem.toFixed(2));
+  }, [futureExpenseAmount, fixedSum]);
+
+  const percentageSum = useMemo(() => {
+    const percents = (sharesWatch || []).filter((s: ExpenseShareRequest) => s.type === 'PERCENTAGE');
+    return Number(percents.reduce((a: number, b: ExpenseShareRequest) => a + (b.amount || 0), 0).toFixed(2));
+  }, [sharesWatch]);
+
+  const hasPercentage = useMemo(() => (sharesWatch || []).some((s: ExpenseShareRequest) => s.type === 'PERCENTAGE'), [sharesWatch]);
+  const hasEqual = useMemo(() => (sharesWatch || []).some((s: ExpenseShareRequest) => s.type === 'EQUAL'), [sharesWatch]);
+  const duplicateUsers = useMemo(() => hasDuplicates((sharesWatch || []).map((s: ExpenseShareRequest) => ({ userId: s.userId, amount: s.amount, type: s.type }))), [sharesWatch]);
+
+  const percentagePreview = useMemo(() => {
+    const totalRem = remainderAmount;
+    return (sharesWatch || []).map((s: ExpenseShareRequest) => {
+      if (s.type === 'PERCENTAGE') {
+        const monetary = Number(((s.amount || 0) / 100 * totalRem).toFixed(2));
+        return { ...s, _previewAmount: monetary } as any;
+      }
+      return { ...s, _previewAmount: s.amount } as any;
+    });
+  }, [sharesWatch, remainderAmount]);
 
   useEffect(() => {
+    // Evitar llamadas autenticadas si no hay token (prefetch/precarga en dev)
+    const hasToken = !!getToken();
+    const onDashboardGroupsRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard/groups');
+    if (!hasToken || !onDashboardGroupsRoute) return;
     if (groupId) {
       loadGroup();
       loadExpenses();
@@ -161,6 +201,53 @@ export default function GroupDetailPage() {
       });
     }
   }, [editingExpense, resetUpdateExpense]);
+
+  useEffect(() => {
+    const current = (sharesWatch || []) as ExpenseShareRequest[];
+    if (!futureExpenseAmount || current.length === 0) return;
+    const anyPercent = current.some((s) => s.type === 'PERCENTAGE');
+    const equalers = current.filter((s) => s.type === 'EQUAL');
+    if (anyPercent || equalers.length === 0) return;
+
+    const run = () => {
+      const total = Number(futureExpenseAmount || 0);
+      const fixedTotal = Number(current.filter((s) => s.type === 'FIXED').reduce((a, b) => a + (b.amount || 0), 0).toFixed(3));
+      const rem = Number((total - fixedTotal).toFixed(3));
+      const base = Number((rem / equalers.length).toFixed(3));
+      const updated = current.map((s) => (s.type === 'EQUAL' ? { ...s, amount: base } : s));
+      const sumBase = Number(updated.filter((s) => s.type === 'EQUAL').reduce((a, b) => a + (b.amount || 0), 0).toFixed(3));
+      const diff = Number((rem - sumBase).toFixed(3));
+      for (let i = updated.length - 1; i >= 0; i--) {
+        if (updated[i].type === 'EQUAL') {
+          updated[i].amount = Number(((updated[i].amount || 0) + diff).toFixed(3));
+          break;
+        }
+      }
+      const changed = updated.some((s, i) => s.amount !== current[i]?.amount || s.type !== current[i]?.type || s.userId !== current[i]?.userId);
+      if (changed) {
+        replaceShares(updated as any);
+        setValueExpense('shares', updated as any, { shouldDirty: true });
+      }
+    };
+
+    if (equalersUpdateTimer.current) {
+      clearTimeout(equalersUpdateTimer.current);
+      equalersUpdateTimer.current = null;
+    }
+
+    if (isEditingAmountRef.current) {
+      equalersUpdateTimer.current = window.setTimeout(run, 250);
+    } else {
+      run();
+    }
+
+    return () => {
+      if (equalersUpdateTimer.current) {
+        clearTimeout(equalersUpdateTimer.current);
+        equalersUpdateTimer.current = null;
+      }
+    };
+  }, [sharesWatch, futureExpenseAmount]);
 
   const loadGroup = async () => {
     try {
@@ -192,6 +279,9 @@ export default function GroupDetailPage() {
 
   const loadExpenses = async () => {
     try {
+      const hasToken = !!getToken();
+      const onDashboardGroupsRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard/groups');
+      if (!hasToken || !onDashboardGroupsRoute) return;
       const response = await expensesApi.getAll({ groupId, page: 0, size: 100 });
       apiLogger.expenses({
         endpoint: 'getAll',
@@ -309,16 +399,22 @@ export default function GroupDetailPage() {
   };
 
   const calculateEqualShares = () => {
-    if (!futureExpenseAmount || !groupMembers.length) return;
-    const amountPerPerson = futureExpenseAmount / groupMembers.length;
-    const shares: ExpenseShareRequest[] = groupMembers.map(member => ({
-      userId: member.id,
-      amount: amountPerPerson,
-      type: 'EQUAL' as const,
+    if (!futureExpenseAmount || !groupMembers.length || hasPercentage) return;
+    const total = Number(futureExpenseAmount || 0);
+    const rem = Number((total - fixedSum).toFixed(3));
+    // Unicos por usuario
+    const uniqueIds = Array.from(new Set(groupMembers.map(m => m.id)));
+    const count = uniqueIds.length;
+    const base = Number((rem / count).toFixed(3));
+    const shares: ExpenseShareRequest[] = uniqueIds.map((id, idx) => ({
+      userId: id,
+      amount: base,
+      type: 'EQUAL',
     }));
-    setValueExpense('shares', shares);
-    shareFields.forEach((_, index) => removeShare(index));
-    shares.forEach(share => appendShare(share));
+    const sumBase = Number(shares.reduce((a, b) => a + b.amount, 0).toFixed(3));
+    const diff = Number((rem - sumBase).toFixed(3));
+    if (shares.length > 0) shares[shares.length - 1].amount = Number((shares[shares.length - 1].amount + diff).toFixed(3));
+    replaceShares(shares);
   };
 
   const handleCreateExpense = async (data: CreateExpenseFormData) => {
@@ -1037,7 +1133,14 @@ export default function GroupDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="amount">Monto *</Label>
-                <Input id="amount" type="number" step="0.01" {...registerExpense('amount', { valueAsNumber: true })} />
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  {...registerExpense('amount', { valueAsNumber: true })}
+                  onFocus={() => { isEditingAmountRef.current = true; }}
+                  onBlur={() => { isEditingAmountRef.current = false; }}
+                />
                 {errorsExpense.amount && <p className="text-sm text-destructive">{errorsExpense.amount.message}</p>}
               </div>
               <div className="space-y-2">
@@ -1090,7 +1193,7 @@ export default function GroupDetailPage() {
                     variant="outline"
                     size="sm"
                     onClick={calculateEqualShares}
-                    disabled={!futureExpenseAmount || groupMembers.length === 0}
+                    disabled={!futureExpenseAmount || groupMembers.length === 0 || hasPercentage}
                   >
                     Dividir Igualmente
                   </Button>
@@ -1120,25 +1223,127 @@ export default function GroupDetailPage() {
                         </option>
                       ))}
                     </select>
+                    {sharesWatch?.[index]?.type === 'PERCENTAGE' && (
+                      <div className="h-6 sm:h-8" />
+                    )}
                   </div>
                   <div className="flex-1 space-y-2">
                     <Label>Monto</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...registerExpense(`shares.${index}.amount`, { valueAsNumber: true })}
-                    />
+                    { (sharesWatch?.[index]?.type === 'PERCENTAGE') ? (
+                      <Input
+                        type="number"
+                        step="1"
+                        min={0}
+                        max={100}
+                        {...registerExpense(`shares.${index}.amount`)}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === '') {
+                            setValueExpense(`shares.${index}.amount`, '' as any, { shouldDirty: true });
+                            return;
+                          }
+                          const num = Number(raw);
+                          const bounded = Math.max(0, Math.min(100, isNaN(num) ? 0 : num));
+                          setValueExpense(`shares.${index}.amount`, bounded as any, { shouldDirty: true });
+                        }}
+                      />
+                    ) : (
+                      <Input
+                        type="number"
+                        step="0.001"
+                        {...registerExpense(`shares.${index}.amount`, {
+                          valueAsNumber: true,
+                          onChange: (e) => {
+                            const v = Number(e.target.value);
+                            const current = (sharesWatch || []).map((s: ExpenseShareRequest, i: number) => i === index ? { ...s, amount: v } : s);
+                            const anyPercent = current.some((s: ExpenseShareRequest) => s.type === 'PERCENTAGE');
+                            const equalers = current.filter((s: ExpenseShareRequest) => s.type === 'EQUAL');
+                            if (!anyPercent && equalers.length > 0) {
+                              const total = Number(futureExpenseAmount || 0);
+                              const fixedTotal = Number(current.filter((s: ExpenseShareRequest) => s.type === 'FIXED').reduce((a: number, b: ExpenseShareRequest) => a + (b.amount || 0), 0).toFixed(3));
+                              const rem = Number((total - fixedTotal).toFixed(3));
+                              if (rem <= 0) {
+                                const zeroed = current.map((s: ExpenseShareRequest) => s.type === 'EQUAL' ? { ...s, amount: 0 } : s);
+                                replaceShares(zeroed as any);
+                                setValueExpense('shares', zeroed as any, { shouldDirty: true });
+                                return;
+                              }
+                              const base = Number((rem / equalers.length).toFixed(3));
+                              const updated = current.map((s: ExpenseShareRequest) => s.type === 'EQUAL' ? { ...s, amount: base } : s);
+                              const sumBase = Number(updated.filter((s: ExpenseShareRequest) => s.type === 'EQUAL').reduce((a: number, b: ExpenseShareRequest) => a + (b.amount || 0), 0).toFixed(3));
+                              const diff = Number((rem - sumBase).toFixed(3));
+                              for (let i = updated.length - 1; i >= 0; i--) {
+                                if (updated[i].type === 'EQUAL') {
+                                  updated[i].amount = Number(((updated[i].amount || 0) + diff).toFixed(3));
+                                  break;
+                                }
+                              }
+                              replaceShares(updated as any);
+                              setValueExpense('shares', updated as any, { shouldDirty: true });
+                            }
+                          },
+                        })}
+                        disabled={sharesWatch?.[index]?.type === 'EQUAL'}
+                      />
+                    )}
+                    {sharesWatch?.[index]?.type === 'PERCENTAGE' && (
+                      <div className="h-6 sm:h-8">
+                        <p className="text-xs text-muted-foreground leading-4 sm:leading-5">
+                          Monto calculado: {formatCurrency(percentagePreview[index]?._previewAmount || 0, watchExpense('currency') || 'USD')} sobre remanente {formatCurrency(remainderAmount, watchExpense('currency') || 'USD')}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex-1 space-y-2">
+                 <div className="flex-1 space-y-2">
                     <Label>Tipo</Label>
                     <select
-                      {...registerExpense(`shares.${index}.type`)}
+                      value={sharesWatch?.[index]?.type || 'FIXED'}
+                      onChange={(e) => {
+                        const nextType = e.target.value as 'FIXED' | 'EQUAL' | 'PERCENTAGE';
+                        const current = (sharesWatch || []).map((s: ExpenseShareRequest, i: number) => i === index ? { ...s, type: nextType, amount: nextType === 'PERCENTAGE' ? (s.amount || 0) : (nextType === 'EQUAL' ? 0 : s.amount || 0) } : s);
+                        const anyPercent = current.some((s: ExpenseShareRequest) => s.type === 'PERCENTAGE');
+                        const equalers = current.filter((s: ExpenseShareRequest) => s.type === 'EQUAL');
+                        if (nextType === 'PERCENTAGE' || anyPercent) {
+                          const normalized = current.map((s: ExpenseShareRequest) => s.type === 'EQUAL' ? { ...s, type: 'PERCENTAGE', amount: 0 } : s);
+                          replaceShares(normalized as any);
+                          setValueExpense('shares', normalized as any, { shouldDirty: true });
+                          return;
+                        }
+                        if (equalers.length > 0) {
+                          const total = Number(futureExpenseAmount || 0);
+                          const fixedTotal = Number(current.filter((s: ExpenseShareRequest) => s.type === 'FIXED').reduce((a: number, b: ExpenseShareRequest) => a + (b.amount || 0), 0).toFixed(3));
+                          const rem = Number((total - fixedTotal).toFixed(3));
+                          if (rem <= 0) {
+                            const zeroed = current.map((s: ExpenseShareRequest) => s.type === 'EQUAL' ? { ...s, amount: 0 } : s);
+                            replaceShares(zeroed as any);
+                            setValueExpense('shares', zeroed as any, { shouldDirty: true });
+                            return;
+                          }
+                          const base = Number((rem / equalers.length).toFixed(3));
+                          const updated = current.map((s: ExpenseShareRequest) => s.type === 'EQUAL' ? { ...s, amount: base } : s);
+                          const sumBase = Number(updated.filter((s: ExpenseShareRequest) => s.type === 'EQUAL').reduce((a: number, b: ExpenseShareRequest) => a + (b.amount || 0), 0).toFixed(3));
+                          const diff = Number((rem - sumBase).toFixed(3));
+                          for (let i = updated.length - 1; i >= 0; i--) {
+                            if (updated[i].type === 'EQUAL') {
+                              updated[i].amount = Number(((updated[i].amount || 0) + diff).toFixed(3));
+                              break;
+                            }
+                          }
+                          replaceShares(updated as any);
+                          setValueExpense('shares', updated as any, { shouldDirty: true });
+                        } else {
+                          replaceShares(current as any);
+                        }
+                      }}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     >
                       <option value="FIXED">Fijo</option>
-                      <option value="EQUAL">Igual</option>
+                      <option value="EQUAL" disabled={hasPercentage}>Igual</option>
                       <option value="PERCENTAGE">Porcentaje</option>
                     </select>
+                    {sharesWatch?.[index]?.type === 'PERCENTAGE' && (
+                      <div className="h-6 sm:h-8" />
+                    )}
                   </div>
                   <Button
                     type="button"
@@ -1150,13 +1355,23 @@ export default function GroupDetailPage() {
                   </Button>
                 </div>
               ))}
+              {/* Validaciones visuales */}
               {errorsExpense.shares && <p className="text-sm text-destructive">{errorsExpense.shares.message}</p>}
+              {hasPercentage && percentageSum !== 100 && (
+                <p className="text-sm text-destructive">Los porcentajes deben sumar 100% del remanente</p>
+              )}
+              {fixedSum > Number(futureExpenseAmount || 0) && (
+                <p className="text-sm text-destructive">El total de montos fijos excede el monto del gasto</p>
+              )}
+              {duplicateUsers && (
+                <p className="text-sm text-destructive">No se permiten usuarios duplicados</p>
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setExpenseDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || (hasPercentage && percentageSum !== 100) || fixedSum > Number(futureExpenseAmount || 0) || duplicateUsers}>
                 {isSubmitting ? 'Creando...' : 'Crear Gasto'}
               </Button>
             </DialogFooter>

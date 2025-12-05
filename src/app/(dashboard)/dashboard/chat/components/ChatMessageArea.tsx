@@ -54,6 +54,16 @@ export function ChatMessageArea({ conversation, groupName }: ChatMessageAreaProp
       WS_CHANNELS.CONVERSATION_MESSAGES(conversation.id),
     ];
 
+    const isMessageResponse = (x: unknown): x is MessageResponse => {
+      if (!x || typeof x !== 'object') return false;
+      const o = x as Partial<MessageResponse>;
+      return (
+        typeof (o as { id?: string }).id === 'string' &&
+        typeof (o as { content?: string }).content === 'string' &&
+        typeof (o as { createdAt?: string }).createdAt === 'string'
+      );
+    };
+
     const unsubscribes = channels.map((channel) =>
       subscribe(channel, (wsMessage) => {
         console.log(`📨 Mensaje recibido en ${channel}:`, wsMessage);
@@ -63,16 +73,24 @@ export function ChatMessageArea({ conversation, groupName }: ChatMessageAreaProp
         let message: MessageResponse | null = null;
         
         // Formato 1: data.message
-        if (data?.message) {
-          message = data.message as MessageResponse;
+        if (data?.message && isMessageResponse(data.message)) {
+          message = data.message;
         }
         // Formato 2: data directamente es el mensaje
-        else if (data && typeof data === 'object' && 'content' in data && 'sender' in data) {
-          message = data as MessageResponse;
+        else if (data && isMessageResponse(data)) {
+          message = data;
         }
         // Formato 3: data.data.message
-        else if (data?.data?.message) {
-          message = data.data.message as MessageResponse;
+        else if (
+          data &&
+          typeof data === 'object' &&
+          'data' in (data as Record<string, unknown>) &&
+          (data as { data?: unknown }).data &&
+          typeof (data as { data?: unknown }).data === 'object' &&
+          'message' in ((data as { data?: Record<string, unknown> }).data as Record<string, unknown>) &&
+          isMessageResponse(((data as { data?: { message?: unknown } }).data as { message?: unknown }).message)
+        ) {
+          message = ((data as { data?: { message?: unknown } }).data as { message?: MessageResponse }).message!;
         }
         
         if (!message) {
@@ -126,7 +144,13 @@ export function ChatMessageArea({ conversation, groupName }: ChatMessageAreaProp
             );
           }
         } else if (type === 'MESSAGE_DELETED' || action === 'DELETED') {
-          const messageId = message.id || data.id || wsMessage.entityId;
+          const messageId = (message && typeof message.id === 'string')
+            ? message.id
+            : (data && typeof (data as { id?: unknown }).id === 'string')
+            ? (data as { id?: string }).id!
+            : typeof wsMessage.entityId === 'string'
+            ? wsMessage.entityId
+            : undefined;
           if (messageId) {
             setMessages((prev) => prev.filter((m) => m.id !== messageId));
           }

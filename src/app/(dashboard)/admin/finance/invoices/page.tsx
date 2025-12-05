@@ -41,37 +41,71 @@ export default function AdminInvoicesPage() {
   useEffect(() => {
     if (!connected) return;
 
+    const isInvoiceResponse = (x: unknown): x is InvoiceResponse => {
+      if (!x || typeof x !== 'object') return false;
+      const o = x as Partial<InvoiceResponse>;
+      return (
+        typeof (o as { id?: string }).id === 'string' &&
+        typeof (o as { invoiceNumber?: string }).invoiceNumber === 'string' &&
+        typeof (o as { issueDate?: string }).issueDate === 'string' &&
+        typeof (o as { dueDate?: string }).dueDate === 'string' &&
+        typeof (o as { status?: string }).status === 'string'
+      );
+    };
+
+    const isInvoiceStatus = (s: unknown): s is InvoiceStatus =>
+      typeof s === 'string' && ['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'VOID'].includes(s);
+
     const unsubscribe = subscribe(WS_CHANNELS.FINANCE_INVOICES, (message) => {
       const { type, action, entityId, data } = message;
       
       if (type === 'INVOICE_CREATED' || type === 'INVOICE_UPDATED' || action === 'CREATED' || action === 'UPDATED') {
-        const invoice = data.invoice || data as InvoiceResponse;
-        setInvoices((prev) => {
-          const existingIndex = prev.findIndex((i) => i.id === invoice.id);
-          if (existingIndex >= 0) {
-            const updated = [...prev];
-            updated[existingIndex] = invoice;
-            return updated;
-          } else {
-            return [invoice, ...prev];
+        const payload = data as unknown;
+        const candidate = (payload && typeof payload === 'object' && 'invoice' in (payload as Record<string, unknown>))
+          ? (payload as { invoice?: unknown }).invoice
+          : payload;
+        if (isInvoiceResponse(candidate)) {
+          setInvoices((prev) => {
+            const existingIndex = prev.findIndex((i) => i.id === candidate.id);
+            if (existingIndex >= 0) {
+              const updated = [...prev];
+              updated[existingIndex] = candidate;
+              return updated;
+            } else {
+              return [candidate, ...prev];
+            }
+          });
+          if (type === 'INVOICE_CREATED' || action === 'CREATED') {
+            toast.success(`Nueva factura: ${candidate.invoiceNumber}`);
+          } else if (candidate.status === 'PAID') {
+            toast.success(`Factura ${candidate.invoiceNumber} marcada como pagada`);
           }
-        });
-        
-        if (type === 'INVOICE_CREATED' || action === 'CREATED') {
-          toast.success(`Nueva factura: ${invoice.invoiceNumber}`);
-        } else if (invoice.status === 'PAID') {
-          toast.success(`Factura ${invoice.invoiceNumber} marcada como pagada`);
         }
       } else if (type === 'INVOICE_DELETED' || action === 'DELETED') {
-        const id = entityId || data.id;
-        setInvoices((prev) => prev.filter((i) => i.id !== id));
-        toast.info('Factura eliminada');
+        let id: string | undefined = entityId ?? undefined;
+        if (!id && data && typeof data === 'object' && 'id' in (data as Record<string, unknown>)) {
+          const maybeId = (data as { id?: unknown }).id;
+          if (typeof maybeId === 'string') id = maybeId;
+        }
+        if (id) {
+          setInvoices((prev) => prev.filter((i) => i.id !== id));
+          toast.info('Factura eliminada');
+        }
       } else if (type === 'INVOICE_PAID' || type === 'INVOICE_STATUS_CHANGED' || action === 'STATUS_CHANGED') {
-        const id = entityId || data.id;
-        const status = data.status || data.newStatus;
-        setInvoices((prev) =>
-          prev.map((i) => (i.id === id ? { ...i, status } : i))
-        );
+        let id: string | undefined = entityId ?? undefined;
+        if (!id && data && typeof data === 'object' && 'id' in (data as Record<string, unknown>)) {
+          const maybeId = (data as { id?: unknown }).id;
+          if (typeof maybeId === 'string') id = maybeId;
+        }
+        const statusCandidate = data && typeof data === 'object' ? (data as { status?: unknown; newStatus?: unknown }) : {};
+        const nextStatus = isInvoiceStatus(statusCandidate.status)
+          ? statusCandidate.status
+          : isInvoiceStatus(statusCandidate.newStatus)
+          ? statusCandidate.newStatus
+          : undefined;
+        if (id && nextStatus) {
+          setInvoices((prev) => prev.map((i) => (i.id === id ? { ...i, status: nextStatus } : i)));
+        }
       }
     });
 

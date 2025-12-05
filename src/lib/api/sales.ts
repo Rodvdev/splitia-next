@@ -32,7 +32,7 @@ export const salesApi = {
     apiLogger.sales({
       endpoint: 'GET /admin/sales/opportunities',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/sales/opportunities', {
       params: pageable,
@@ -155,7 +155,7 @@ export const salesApi = {
     apiLogger.sales({
       endpoint: 'GET /admin/sales/leads',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/sales/leads', {
       params: pageable,
@@ -270,7 +270,7 @@ export const salesApi = {
     apiLogger.sales({
       endpoint: 'GET /admin/sales/activities',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/sales/activities', {
       params: pageable,

@@ -5,9 +5,9 @@
 export interface ApiLogOptions {
   endpoint: string;
   success: boolean;
-  params?: Record<string, any>;
-  data?: any;
-  error?: any;
+  params?: Record<string, unknown>;
+  data?: unknown;
+  error?: unknown;
   emoji?: string;
 }
 
@@ -25,7 +25,7 @@ export function logApiResponse(options: ApiLogOptions): void {
     emoji = '📡',
   } = options;
 
-  const logData: Record<string, any> = {
+  const logData: Record<string, unknown> = {
     endpoint,
     success,
   };

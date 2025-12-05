@@ -62,13 +62,13 @@ export interface MarketingWorkflowResponse {
 
 export interface WorkflowTrigger {
   type: 'EVENT' | 'WEBHOOK' | 'SCHEDULE' | 'MANUAL';
-  config: Record<string, any>;
+  config: Record<string, unknown>;
 }
 
 export interface WorkflowStep {
   id: string;
   type: 'ACTION' | 'CONDITION' | 'DELAY' | 'LOOP';
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   nextSteps?: string[];
 }
 

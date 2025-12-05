@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { salesApi } from '@/lib/api/sales';
-import { OpportunityResponse, Pageable, OpportunityStage, SalesMetricsResponse } from '@/types';
+import { OpportunityResponse, Pageable, OpportunityStage, SalesMetricsResponse, Page } from '@/types';
 import { toast } from 'sonner';
 import { extractDataFromResponse } from '@/lib/utils/api-response';
 import { apiLogger } from '@/lib/utils/api-logger';
@@ -11,7 +11,7 @@ export function useOpportunities(pageable?: Pageable) {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  const loadOpportunities = async (params?: Pageable & {
+  const loadOpportunities = useCallback(async (params?: Pageable & {
     stage?: OpportunityStage;
     assignedToId?: string;
     contactId?: string;
@@ -23,12 +23,16 @@ export function useOpportunities(pageable?: Pageable) {
       apiLogger.sales({
         endpoint: 'getAllOpportunities',
         success: response.success,
-        params: params || pageable,
+        params: params
+          ? (params as unknown as Record<string, unknown>)
+          : pageable
+          ? (pageable as unknown as Record<string, unknown>)
+          : undefined,
         data: response.data,
         error: response.success ? null : response,
       });
       if (response.success) {
-        const page = response.data as any;
+        const page = response.data as Page<OpportunityResponse>;
         setOpportunities(Array.isArray(page.content) ? page.content : []);
         setTotalPages(page.totalPages || 0);
         setTotalElements(page.totalElements || 0);
@@ -37,7 +41,11 @@ export function useOpportunities(pageable?: Pageable) {
       apiLogger.sales({
         endpoint: 'getAllOpportunities',
         success: false,
-        params: params || pageable,
+        params: params
+          ? (params as unknown as Record<string, unknown>)
+          : pageable
+          ? (pageable as unknown as Record<string, unknown>)
+          : undefined,
         error: error,
       });
       toast.error('Error al cargar oportunidades');
@@ -45,11 +53,11 @@ export function useOpportunities(pageable?: Pageable) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageable]);
 
   useEffect(() => {
     loadOpportunities();
-  }, []);
+  }, [loadOpportunities]);
 
   return {
     opportunities,

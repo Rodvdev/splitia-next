@@ -170,8 +170,11 @@ export function CreateTaskDialog({ open, onOpenChange, groupId, onSuccess }: Cre
         onOpenChange(false);
         onSuccess?.(response.data);
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al crear la tarea');
+    } catch (error: unknown) {
+      const message = (error && typeof error === 'object' && 'response' in error)
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      toast.error(message || 'Error al crear la tarea');
     } finally {
       setIsLoading(false);
     }

@@ -41,29 +41,51 @@ export default function AdminContactsPage() {
   useEffect(() => {
     if (!connected) return;
 
+    const isContactResponse = (x: unknown): x is ContactResponse => {
+      if (!x || typeof x !== 'object') return false;
+      const o = x as Partial<ContactResponse>;
+      return (
+        typeof (o as { id?: string }).id === 'string' &&
+        typeof (o as { firstName?: string }).firstName === 'string' &&
+        typeof (o as { email?: string }).email === 'string' &&
+        typeof (o as { type?: string }).type === 'string' &&
+        typeof (o as { createdAt?: string }).createdAt === 'string'
+      );
+    };
+
     const unsubscribe = subscribe(WS_CHANNELS.CONTACTS, (message) => {
       const { type, action, entityId, data } = message;
       
       if (type === 'CONTACT_CREATED' || type === 'CONTACT_UPDATED' || action === 'CREATED' || action === 'UPDATED') {
-        const contact = data.contact || data as ContactResponse;
-        setContacts((prev) => {
-          const existingIndex = prev.findIndex((c) => c.id === contact.id);
-          if (existingIndex >= 0) {
-            const updated = [...prev];
-            updated[existingIndex] = contact;
-            return updated;
-          } else {
-            return [contact, ...prev];
+        const payload = data as unknown;
+        const candidate = (payload && typeof payload === 'object' && 'contact' in (payload as Record<string, unknown>))
+          ? (payload as { contact?: unknown }).contact
+          : payload;
+        if (isContactResponse(candidate)) {
+          setContacts((prev) => {
+            const existingIndex = prev.findIndex((c) => c.id === candidate.id);
+            if (existingIndex >= 0) {
+              const updated = [...prev];
+              updated[existingIndex] = candidate;
+              return updated;
+            } else {
+              return [candidate, ...prev];
+            }
+          });
+          if (type === 'CONTACT_CREATED' || action === 'CREATED') {
+            toast.success(`Nuevo contacto: ${candidate.firstName} ${candidate.lastName || ''}`);
           }
-        });
-        
-        if (type === 'CONTACT_CREATED' || action === 'CREATED') {
-          toast.success(`Nuevo contacto: ${contact.firstName} ${contact.lastName || ''}`);
         }
       } else if (type === 'CONTACT_DELETED' || action === 'DELETED') {
-        const id = entityId || data.id;
-        setContacts((prev) => prev.filter((c) => c.id !== id));
-        toast.info('Contacto eliminado');
+        let id: string | undefined = entityId ?? undefined;
+        if (!id && data && typeof data === 'object' && 'id' in (data as Record<string, unknown>)) {
+          const maybeId = (data as { id?: unknown }).id;
+          if (typeof maybeId === 'string') id = maybeId;
+        }
+        if (id) {
+          setContacts((prev) => prev.filter((c) => c.id !== id));
+          toast.info('Contacto eliminado');
+        }
       }
     });
 

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { marketingApi } from '@/lib/api/marketing';
-import { CampaignResponse, Pageable } from '@/types';
+import { CampaignResponse, Pageable, Page } from '@/types';
 import { toast } from 'sonner';
 import { extractDataFromResponse } from '@/lib/utils/api-response';
 import { apiLogger } from '@/lib/utils/api-logger';
@@ -11,19 +11,23 @@ export function useCampaigns(pageable?: Pageable) {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  const loadCampaigns = async (params?: Pageable) => {
+  const loadCampaigns = useCallback(async (params?: Pageable) => {
     try {
       setLoading(true);
       const response = await marketingApi.getAllCampaigns(params || pageable);
       apiLogger.general({
         endpoint: 'getAllCampaigns',
         success: response.success,
-        params: params || pageable,
+        params: params
+          ? (params as unknown as Record<string, unknown>)
+          : pageable
+          ? (pageable as unknown as Record<string, unknown>)
+          : undefined,
         data: response.data,
         error: response.success ? null : response,
       });
       if (response.success) {
-        const page = response.data as any;
+        const page = response.data as Page<CampaignResponse>;
         setCampaigns(Array.isArray(page.content) ? page.content : []);
         setTotalPages(page.totalPages || 0);
         setTotalElements(page.totalElements || 0);
@@ -32,7 +36,11 @@ export function useCampaigns(pageable?: Pageable) {
       apiLogger.general({
         endpoint: 'getAllCampaigns',
         success: false,
-        params: params || pageable,
+        params: params
+          ? (params as unknown as Record<string, unknown>)
+          : pageable
+          ? (pageable as unknown as Record<string, unknown>)
+          : undefined,
         error: error,
       });
       toast.error('Error al cargar campañas');
@@ -40,11 +48,11 @@ export function useCampaigns(pageable?: Pageable) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageable]);
 
   useEffect(() => {
     loadCampaigns();
-  }, []);
+  }, [loadCampaigns]);
 
   return {
     campaigns,

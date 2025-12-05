@@ -46,7 +46,7 @@ export interface WebhookLogResponse {
   webhookId: string;
   webhook?: WebhookResponse;
   event: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   responseStatus?: number;
   responseBody?: string;
   error?: string;
@@ -58,7 +58,7 @@ export interface IntegrationResponse {
   name: string;
   type: 'SLACK' | 'NOTION' | 'GOOGLE_SHEETS' | 'ZAPIER' | 'MAKE' | 'CUSTOM';
   status: IntegrationStatus;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   lastSyncAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -67,7 +67,7 @@ export interface IntegrationResponse {
 export interface CreateIntegrationRequest {
   name: string;
   type: 'SLACK' | 'NOTION' | 'GOOGLE_SHEETS' | 'ZAPIER' | 'MAKE' | 'CUSTOM';
-  config: Record<string, any>;
+  config: Record<string, unknown>;
 }
 
 export interface ConnectorConfig {
@@ -80,7 +80,7 @@ export interface ConnectorConfig {
     databaseId?: string;
   };
   googleSheets?: {
-    credentials: Record<string, any>;
+    credentials: Record<string, unknown>;
     spreadsheetId?: string;
   };
   zapier?: {

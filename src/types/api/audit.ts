@@ -8,10 +8,10 @@ export interface AuditLogResponse {
   entityId?: string;                   // UUID del entidad afectada
   userId: string;                      // UUID del usuario que realizó la acción
   user?: UserResponse;                 // Usuario (expandido)
-  changes?: Record<string, { old: any; new: any }>; // Cambios realizados
+  changes?: Record<string, { old: unknown; new: unknown }>; // Cambios realizados
   ipAddress?: string;
   userAgent?: string;
-  metadata?: Record<string, any>;       // Metadatos adicionales
+  metadata?: Record<string, unknown>;       // Metadatos adicionales
   createdAt: string;                   // ISO 8601 datetime
 }
 

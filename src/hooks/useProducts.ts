@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { inventoryApi } from '@/lib/api/inventory';
-import { ProductResponse, Pageable, StockMovementResponse } from '@/types';
+import { ProductResponse, Pageable, StockMovementResponse, Page } from '@/types';
 import { toast } from 'sonner';
 import { extractDataFromResponse } from '@/lib/utils/api-response';
 import { apiLogger } from '@/lib/utils/api-logger';
@@ -18,12 +18,16 @@ export function useProducts(pageable?: Pageable) {
       apiLogger.general({
         endpoint: 'getAllProducts',
         success: response.success,
-        params: params || pageable,
+        params: params
+          ? (params as unknown as Record<string, unknown>)
+          : pageable
+          ? (pageable as unknown as Record<string, unknown>)
+          : undefined,
         data: response.data,
         error: response.success ? null : response,
       });
       if (response.success) {
-        const page = response.data as any;
+        const page = response.data as Page<ProductResponse>;
         setProducts(Array.isArray(page.content) ? page.content : []);
         setTotalPages(page.totalPages || 0);
         setTotalElements(page.totalElements || 0);
@@ -32,7 +36,11 @@ export function useProducts(pageable?: Pageable) {
       apiLogger.general({
         endpoint: 'getAllProducts',
         success: false,
-        params: params || pageable,
+        params: params
+          ? (params as unknown as Record<string, unknown>)
+          : pageable
+          ? (pageable as unknown as Record<string, unknown>)
+          : undefined,
         error: error,
       });
       toast.error('Error al cargar productos');
@@ -123,13 +131,13 @@ export function useInventoryMovements(productId?: string, pageable?: Pageable) {
       }
     };
     loadMovements();
-  }, [productId, pageable?.page, pageable?.size]);
+  }, [productId, pageable]);
 
   return { movements, loading };
 }
 
 export function useStockAlerts() {
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

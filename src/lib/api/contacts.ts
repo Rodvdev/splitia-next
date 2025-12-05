@@ -22,7 +22,9 @@ export const contactsApi = {
     apiLogger.general({
       endpoint: 'GET /admin/contacts',
       success: true,
-      params: pageable,
+      params: pageable
+        ? (pageable as unknown as Record<string, unknown>)
+        : undefined,
     });
     const response = await apiClient.instance.get('/admin/contacts', {
       params: pageable,
@@ -109,10 +111,11 @@ export const contactsApi = {
       success: true,
       params: { ...pageable, search },
     });
-    const params: any = { ...pageable };
-    if (search) {
-      params.search = search;
-    }
+    const params: { page?: number; size?: number; search?: string } = {
+      page: pageable?.page,
+      size: pageable?.size,
+      search: search || undefined,
+    };
     const response = await apiClient.instance.get('/admin/contacts/companies', {
       params,
     });

@@ -20,10 +20,13 @@ export const chatApi = {
     pageable?: Pageable
   ): Promise<ApiResponse<Page<MessageResponse>>> => {
     // Convertir sort array a string si es necesario (Spring Boot espera string)
-    const params: any = { ...pageable };
-    if (params.sort && Array.isArray(params.sort)) {
-      params.sort = params.sort.join(',');
-    } else if (!params.sort) {
+    const params: { page?: number; size?: number; sort?: string } = {
+      page: pageable?.page,
+      size: pageable?.size,
+    };
+    if (pageable?.sort && Array.isArray(pageable.sort)) {
+      params.sort = pageable.sort.join(',');
+    } else if (!pageable?.sort) {
       params.sort = 'createdAt,desc';
     }
     const response = await apiClient.instance.get(`/conversations/${conversationId}/messages`, {
@@ -60,10 +63,13 @@ export const chatApi = {
   // Conversations
   getConversations: async (pageable?: Pageable): Promise<ApiResponse<Page<ConversationResponse>>> => {
     // Convertir sort array a string si es necesario (Spring Boot espera string)
-    const params: any = { ...pageable };
-    if (params.sort && Array.isArray(params.sort)) {
-      params.sort = params.sort.join(',');
-    } else if (!params.sort) {
+    const params: { page?: number; size?: number; sort?: string } = {
+      page: pageable?.page,
+      size: pageable?.size,
+    };
+    if (pageable?.sort && Array.isArray(pageable.sort)) {
+      params.sort = pageable.sort.join(',');
+    } else if (!pageable?.sort) {
       params.sort = 'createdAt,desc';
     }
     const response = await apiClient.instance.get('/conversations', { params });
@@ -169,11 +175,14 @@ export const chatApi = {
       });
 
       return createResponse;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = (error && typeof error === 'object' && 'message' in error)
+        ? String((error as { message?: string }).message)
+        : 'Failed to get or create group conversation';
       return {
         success: false,
-        data: null as any,
-        message: error.message || 'Failed to get or create group conversation',
+        data: null as unknown as ConversationResponse,
+        message,
         timestamp: new Date().toISOString(),
       };
     }

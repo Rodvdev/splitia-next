@@ -78,19 +78,17 @@ export function AsyncPaginatedSelect<T>(props: AsyncPaginatedSelectProps<T>) {
     }
   }, [open, loadPage]);
 
-  const onViewportRef = (el: HTMLDivElement | null) => {
+  const onViewportRef: React.RefCallback<HTMLDivElement> = (el) => {
     viewportRef.current = el;
     if (!el) return;
     const handleScroll = () => {
       if (!viewportRef.current || loading || !hasMore) return;
       const { scrollTop, scrollHeight, clientHeight } = viewportRef.current;
       if (scrollTop + clientHeight >= scrollHeight - 24) {
-        // near bottom
         loadPage(page + 1);
       }
     };
     el.addEventListener("scroll", handleScroll);
-    return () => el.removeEventListener("scroll", handleScroll);
   };
 
   const selectedLabel = useMemo(() => {
@@ -105,7 +103,7 @@ export function AsyncPaginatedSelect<T>(props: AsyncPaginatedSelectProps<T>) {
       </SelectTrigger>
       <SelectContent>
         {/* Radix Select doesn't expose viewport ref directly through our wrapper, so we hook into DOM */}
-        <div ref={onViewportRef as any} className="max-h-56 overflow-y-auto p-1">
+        <div ref={onViewportRef} className="max-h-56 overflow-y-auto p-1">
           {options.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>
               {opt.label}

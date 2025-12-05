@@ -28,7 +28,9 @@ export const financeApi = {
     apiLogger.general({
       endpoint: 'GET /admin/finance/invoices',
       success: true,
-      params: pageable,
+      params: pageable
+        ? (pageable as unknown as Record<string, unknown>)
+        : undefined,
     });
     const response = await apiClient.instance.get('/admin/finance/invoices', {
       params: pageable,
@@ -132,7 +134,9 @@ export const financeApi = {
     apiLogger.general({
       endpoint: 'GET /admin/finance/payments',
       success: true,
-      params: pageable,
+      params: pageable
+        ? (pageable as unknown as Record<string, unknown>)
+        : undefined,
     });
     const response = await apiClient.instance.get('/admin/finance/payments', {
       params: pageable,

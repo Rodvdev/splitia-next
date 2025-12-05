@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { webSocketService, WebSocketMessage, WS_CHANNELS } from './websocket-service';
 import { useAuthRestore } from '@/hooks/useAuthRestore';
 import { getToken } from '@/lib/auth/token';
@@ -8,7 +8,7 @@ import { getToken } from '@/lib/auth/token';
 interface WebSocketContextType {
   connected: boolean;
   subscribe: (channel: string, callback: (message: WebSocketMessage) => void) => () => void;
-  send: (channel: string, body: any) => void;
+  send: (channel: string, body: unknown) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
@@ -16,7 +16,14 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(undefin
 export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const { user } = useAuthRestore();
-  const [lastToken, setLastToken] = useState<string | null>(null);
+  const lastTokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = webSocketService.onConnectionChange((isConnected) => {
+      setConnected(isConnected);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     // Conectar cuando el usuario esté autenticado
@@ -24,29 +31,19 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       const currentToken = getToken();
       
       // Si el token cambió, reconectar
-      if (currentToken !== lastToken && lastToken !== null) {
+      if (currentToken !== lastTokenRef.current && lastTokenRef.current !== null) {
         webSocketService.reconnect();
       } else {
         webSocketService.connect();
       }
       
-      setLastToken(currentToken);
-      
-      const unsubscribe = webSocketService.onConnectionChange((isConnected) => {
-        setConnected(isConnected);
-      });
-
-      return () => {
-        unsubscribe();
-        // No desconectar aquí, dejar que se desconecte solo cuando el usuario cierre sesión
-      };
+      lastTokenRef.current = currentToken;
     } else {
       // Desconectar si no hay usuario
       webSocketService.disconnect();
-      setConnected(false);
-      setLastToken(null);
+      lastTokenRef.current = null;
     }
-  }, [user, lastToken]);
+  }, [user]);
 
   const subscribe = useCallback(
     (channel: string, callback: (message: WebSocketMessage) => void) => {
@@ -55,7 +52,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const send = useCallback((channel: string, body: any) => {
+  const send = useCallback((channel: string, body: unknown) => {
     webSocketService.send(channel, body);
   }, []);
 

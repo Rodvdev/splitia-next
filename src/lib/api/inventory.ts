@@ -28,7 +28,7 @@ export const inventoryApi = {
     apiLogger.general({
       endpoint: 'GET /admin/inventory/products',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/inventory/products', {
       params: pageable,
@@ -157,7 +157,7 @@ export const inventoryApi = {
     apiLogger.general({
       endpoint: 'GET /admin/inventory/movements',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/inventory/movements', {
       params: pageable,
@@ -211,7 +211,7 @@ export const inventoryApi = {
     apiLogger.general({
       endpoint: 'GET /admin/inventory/categories',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/inventory/categories', {
       params: pageable,

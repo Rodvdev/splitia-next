@@ -20,7 +20,7 @@ export const procurementApi = {
     apiLogger.general({
       endpoint: 'GET /admin/procurement/vendors',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/procurement/vendors', {
       params: pageable,
@@ -107,7 +107,7 @@ export const procurementApi = {
     apiLogger.general({
       endpoint: 'GET /admin/procurement/purchase-orders',
       success: true,
-      params: pageable,
+      params: pageable ? (pageable as unknown as Record<string, unknown>) : undefined,
     });
     const response = await apiClient.instance.get('/admin/procurement/purchase-orders', {
       params: pageable,

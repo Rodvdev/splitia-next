@@ -58,8 +58,15 @@ export function ChatSidebar({ selectedConversationId, onSelectConversation }: Ch
           message = data.message;
         } else if (data && typeof data === 'object' && 'content' in data && 'sender' in data) {
           message = data;
-        } else if (data?.data?.message) {
-          message = data.data.message;
+        } else if (
+          data &&
+          typeof data === 'object' &&
+          'data' in (data as Record<string, unknown>) &&
+          (data as { data?: unknown }).data &&
+          typeof (data as { data?: unknown }).data === 'object' &&
+          'message' in ((data as { data?: Record<string, unknown> }).data as Record<string, unknown>)
+        ) {
+          message = ((data as { data?: { message?: unknown } }).data as { message?: unknown }).message;
         }
         
         if (

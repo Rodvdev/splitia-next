@@ -235,7 +235,10 @@ export function IconSelector({
                           (icon.type === 'emoji' && typeof value === 'string' && icon.value === value) ||
                           (icon.type === 'lucide' && typeof value !== 'string' && 
                            typeof icon.value !== 'string' && typeof value !== 'string' &&
-                           (icon.value as any).displayName === (value as any).displayName);
+                           'displayName' in (icon.value as object) &&
+                           'displayName' in (value as object) &&
+                           (icon.value as { displayName?: string }).displayName ===
+                             (value as { displayName?: string }).displayName);
                         
                         return (
                           <button

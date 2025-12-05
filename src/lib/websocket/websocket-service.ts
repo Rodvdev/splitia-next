@@ -9,7 +9,7 @@ export type WebSocketMessage = {
   action: string; // Acción (ej: "CREATED", "UPDATED", "STATUS_CHANGED")
   entityId: string | null; // ID de la entidad afectada
   entityType: string; // Tipo de entidad (ej: "Opportunity", "Invoice")
-  data: Record<string, any>; // Datos adicionales del evento
+  data: Record<string, unknown>; // Datos adicionales del evento
   userId: string | null; // ID del usuario que disparó el evento
   timestamp: string; // Timestamp ISO 8601
   message: string | null; // Mensaje opcional
@@ -115,7 +115,7 @@ class WebSocketService {
 
     this.client = new Client({
       webSocketFactory: () => {
-        return new SockJS(wsUrl) as any;
+        return new SockJS(wsUrl) as unknown as WebSocket;
       },
       reconnectDelay: this.reconnectDelay,
       heartbeatIncoming: 4000,
@@ -309,7 +309,7 @@ class WebSocketService {
     };
   }
 
-  send(destination: string, body: any): void {
+  send(destination: string, body: unknown): void {
     if (!this.client || !this.isConnected) {
       console.warn('⚠️ No conectado. No se puede enviar mensaje.');
       return;

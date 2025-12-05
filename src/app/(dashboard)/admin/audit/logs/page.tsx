@@ -32,12 +32,29 @@ export default function AdminAuditLogsPage() {
   useEffect(() => {
     if (!connected) return;
 
+    const isAuditLogResponse = (x: unknown): x is AuditLogResponse => {
+      if (!x || typeof x !== 'object') return false;
+      const o = x as Partial<AuditLogResponse>;
+      return (
+        typeof (o as { id?: string }).id === 'string' &&
+        typeof (o as { action?: string }).action === 'string' &&
+        typeof (o as { entityType?: string }).entityType === 'string' &&
+        typeof (o as { userId?: string }).userId === 'string' &&
+        typeof (o as { createdAt?: string }).createdAt === 'string'
+      );
+    };
+
     const unsubscribe = subscribe(WS_CHANNELS.AUDIT_LOGS, (message) => {
       const { type, action, data } = message;
       
       if (type === 'AUDIT_LOG_CREATED' || action === 'CREATED') {
-        const log = data.log || data as AuditLogResponse;
-        setLogs((prev) => [log, ...prev].slice(0, 100)); // Mantener últimas 100
+        const payload = data as unknown;
+        const candidate = (payload && typeof payload === 'object' && 'log' in (payload as Record<string, unknown>))
+          ? (payload as { log?: unknown }).log
+          : payload;
+        if (isAuditLogResponse(candidate)) {
+          setLogs((prev) => [candidate, ...prev].slice(0, 100));
+        }
       }
     });
 
