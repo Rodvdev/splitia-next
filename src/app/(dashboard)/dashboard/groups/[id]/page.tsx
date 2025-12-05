@@ -151,7 +151,8 @@ export default function GroupDetailPage() {
 
   const percentageSum = useMemo(() => {
     const percents = (sharesWatch || []).filter((s: ExpenseShareRequest) => s.type === 'PERCENTAGE');
-    return Number(percents.reduce((a: number, b: ExpenseShareRequest) => a + (b.amount || 0), 0).toFixed(2));
+    const sum = percents.reduce((a: number, b: ExpenseShareRequest) => a + Number(b.amount ?? 0), 0);
+    return Number(sum.toFixed(2));
   }, [sharesWatch]);
 
   const hasPercentage = useMemo(() => (sharesWatch || []).some((s: ExpenseShareRequest) => s.type === 'PERCENTAGE'), [sharesWatch]);
@@ -162,7 +163,8 @@ export default function GroupDetailPage() {
     const totalRem = remainderAmount;
     return (sharesWatch || []).map((s: ExpenseShareRequest) => {
       if (s.type === 'PERCENTAGE') {
-        const monetary = Number(((s.amount || 0) / 100 * totalRem).toFixed(2));
+        const percent = Number(s.amount ?? 0);
+        const monetary = Number(((percent / 100) * totalRem).toFixed(2));
         return { ...s, _previewAmount: monetary } as any;
       }
       return { ...s, _previewAmount: s.amount } as any;
@@ -209,6 +211,10 @@ export default function GroupDetailPage() {
     const equalers = current.filter((s) => s.type === 'EQUAL');
     if (anyPercent || equalers.length === 0) return;
 
+    if (isEditingAmountRef.current) {
+      return;
+    }
+
     const run = () => {
       const total = Number(futureExpenseAmount || 0);
       const fixedTotal = Number(current.filter((s) => s.type === 'FIXED').reduce((a, b) => a + (b.amount || 0), 0).toFixed(3));
@@ -235,11 +241,7 @@ export default function GroupDetailPage() {
       equalersUpdateTimer.current = null;
     }
 
-    if (isEditingAmountRef.current) {
-      equalersUpdateTimer.current = window.setTimeout(run, 250);
-    } else {
-      run();
-    }
+    run();
 
     return () => {
       if (equalersUpdateTimer.current) {
@@ -1230,23 +1232,30 @@ export default function GroupDetailPage() {
                   <div className="flex-1 space-y-2">
                     <Label>Monto</Label>
                     { (sharesWatch?.[index]?.type === 'PERCENTAGE') ? (
-                      <Input
-                        type="number"
-                        step="1"
-                        min={0}
-                        max={100}
-                        {...registerExpense(`shares.${index}.amount`)}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          if (raw === '') {
-                            setValueExpense(`shares.${index}.amount`, '' as any, { shouldDirty: true });
-                            return;
-                          }
-                          const num = Number(raw);
-                          const bounded = Math.max(0, Math.min(100, isNaN(num) ? 0 : num));
-                          setValueExpense(`shares.${index}.amount`, bounded as any, { shouldDirty: true });
-                        }}
-                      />
+                      (() => {
+                        const reg = registerExpense(`shares.${index}.amount`, { valueAsNumber: true });
+                        return (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            max={100}
+                            {...reg}
+                            onChange={(e) => {
+                              reg.onChange(e);
+                              const raw = e.target.value;
+                              const normalized = raw.replace(',', '.');
+                              if (normalized === '') {
+                                setValueExpense(`shares.${index}.amount`, '' as any, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+                                return;
+                              }
+                              const num = parseFloat(normalized);
+                              const bounded = isNaN(num) ? 0 : Math.max(0, Math.min(100, num));
+                              setValueExpense(`shares.${index}.amount`, bounded as any, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+                            }}
+                          />
+                        );
+                      })()
                     ) : (
                       <Input
                         type="number"
@@ -1263,26 +1272,33 @@ export default function GroupDetailPage() {
                               const fixedTotal = Number(current.filter((s: ExpenseShareRequest) => s.type === 'FIXED').reduce((a: number, b: ExpenseShareRequest) => a + (b.amount || 0), 0).toFixed(3));
                               const rem = Number((total - fixedTotal).toFixed(3));
                               if (rem <= 0) {
-                                const zeroed = current.map((s: ExpenseShareRequest) => s.type === 'EQUAL' ? { ...s, amount: 0 } : s);
-                                replaceShares(zeroed as any);
-                                setValueExpense('shares', zeroed as any, { shouldDirty: true });
+                                for (let i = 0; i < current.length; i++) {
+                                  if (current[i].type === 'EQUAL') {
+                                    setValueExpense(`shares.${i}.amount`, 0 as any, { shouldDirty: true });
+                                  }
+                                }
                                 return;
                               }
                               const base = Number((rem / equalers.length).toFixed(3));
-                              const updated = current.map((s: ExpenseShareRequest) => s.type === 'EQUAL' ? { ...s, amount: base } : s);
-                              const sumBase = Number(updated.filter((s: ExpenseShareRequest) => s.type === 'EQUAL').reduce((a: number, b: ExpenseShareRequest) => a + (b.amount || 0), 0).toFixed(3));
+                              for (let i = 0; i < current.length; i++) {
+                                if (current[i].type === 'EQUAL') {
+                                  setValueExpense(`shares.${i}.amount`, base as any, { shouldDirty: true });
+                                }
+                              }
+                              const sumBase = Number((base * equalers.length).toFixed(3));
                               const diff = Number((rem - sumBase).toFixed(3));
-                              for (let i = updated.length - 1; i >= 0; i--) {
-                                if (updated[i].type === 'EQUAL') {
-                                  updated[i].amount = Number(((updated[i].amount || 0) + diff).toFixed(3));
+                              for (let i = current.length - 1; i >= 0; i--) {
+                                if (current[i].type === 'EQUAL') {
+                                  const nextAmt = Number((base + diff).toFixed(3));
+                                  setValueExpense(`shares.${i}.amount`, nextAmt as any, { shouldDirty: true });
                                   break;
                                 }
                               }
-                              replaceShares(updated as any);
-                              setValueExpense('shares', updated as any, { shouldDirty: true });
                             }
                           },
                         })}
+                        onFocus={() => { isEditingAmountRef.current = true; }}
+                        onBlur={() => { isEditingAmountRef.current = false; }}
                         disabled={sharesWatch?.[index]?.type === 'EQUAL'}
                       />
                     )}
@@ -1300,14 +1316,33 @@ export default function GroupDetailPage() {
                       value={sharesWatch?.[index]?.type || 'FIXED'}
                       onChange={(e) => {
                         const nextType = e.target.value as 'FIXED' | 'EQUAL' | 'PERCENTAGE';
-                        const current = (sharesWatch || []).map((s: ExpenseShareRequest, i: number) => i === index ? { ...s, type: nextType, amount: nextType === 'PERCENTAGE' ? (s.amount || 0) : (nextType === 'EQUAL' ? 0 : s.amount || 0) } : s);
-                        const anyPercent = current.some((s: ExpenseShareRequest) => s.type === 'PERCENTAGE');
+                        const current = (sharesWatch || []).map((s: ExpenseShareRequest, i: number) => i === index ? { ...s, type: nextType, amount: nextType === 'PERCENTAGE' ? 0 : (nextType === 'EQUAL' ? 0 : (s.amount || 0)) } : s);
+                        const anyPercent = (sharesWatch || []).some((s: ExpenseShareRequest) => s.type === 'PERCENTAGE') || nextType === 'PERCENTAGE';
                         const equalers = current.filter((s: ExpenseShareRequest) => s.type === 'EQUAL');
-                        if (nextType === 'PERCENTAGE' || anyPercent) {
-                          const normalized = current.map((s: ExpenseShareRequest) => s.type === 'EQUAL' ? { ...s, type: 'PERCENTAGE', amount: 0 } : s);
+                        if (nextType === 'PERCENTAGE') {
+                          const normalized = current.map((s: ExpenseShareRequest) => ({ ...s, type: 'PERCENTAGE', amount: 0 }));
                           replaceShares(normalized as any);
                           setValueExpense('shares', normalized as any, { shouldDirty: true });
                           return;
+                        }
+                        if (anyPercent) {
+                          if (nextType === 'EQUAL') {
+                            const total = Number(futureExpenseAmount || 0);
+                            const fixedTotal = Number(current.filter((s: ExpenseShareRequest) => s.type === 'FIXED').reduce((a: number, b: ExpenseShareRequest) => a + (b.amount || 0), 0).toFixed(3));
+                            const rem = Number((total - fixedTotal).toFixed(3));
+                            const countEqual = current.length;
+                            const base = Number((rem / countEqual).toFixed(3));
+                            const updated = current.map((s: ExpenseShareRequest) => ({ ...s, type: 'EQUAL', amount: base }));
+                            // Distribución simple sin ajuste de redondeo adicional
+                          replaceShares(updated as any);
+                          setValueExpense('shares', updated as any, { shouldDirty: true });
+                          return;
+                          } else if (nextType === 'FIXED') {
+                            const normalized = current.map((s: ExpenseShareRequest) => ({ ...s, type: 'FIXED', amount: 0 }));
+                            replaceShares(normalized as any);
+                            setValueExpense('shares', normalized as any, { shouldDirty: true });
+                            return;
+                          }
                         }
                         if (equalers.length > 0) {
                           const total = Number(futureExpenseAmount || 0);
@@ -1338,7 +1373,7 @@ export default function GroupDetailPage() {
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     >
                       <option value="FIXED">Fijo</option>
-                      <option value="EQUAL" disabled={hasPercentage}>Igual</option>
+                      <option value="EQUAL">Igual</option>
                       <option value="PERCENTAGE">Porcentaje</option>
                     </select>
                     {sharesWatch?.[index]?.type === 'PERCENTAGE' && (
@@ -1357,7 +1392,7 @@ export default function GroupDetailPage() {
               ))}
               {/* Validaciones visuales */}
               {errorsExpense.shares && <p className="text-sm text-destructive">{errorsExpense.shares.message}</p>}
-              {hasPercentage && percentageSum !== 100 && (
+              {hasPercentage && Math.abs(percentageSum - 100) > 0.001 && (
                 <p className="text-sm text-destructive">Los porcentajes deben sumar 100% del remanente</p>
               )}
               {fixedSum > Number(futureExpenseAmount || 0) && (
@@ -1371,7 +1406,7 @@ export default function GroupDetailPage() {
               <Button type="button" variant="outline" onClick={() => setExpenseDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting || (hasPercentage && percentageSum !== 100) || fixedSum > Number(futureExpenseAmount || 0) || duplicateUsers}>
+              <Button type="submit" disabled={isSubmitting || (hasPercentage && Math.abs(percentageSum - 100) > 0.001) || fixedSum > Number(futureExpenseAmount || 0) || duplicateUsers}>
                 {isSubmitting ? 'Creando...' : 'Crear Gasto'}
               </Button>
             </DialogFooter>
